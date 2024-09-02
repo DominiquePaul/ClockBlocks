@@ -17,7 +17,7 @@ interface Session {
 // Assuming you have a way to get the last-used titles based on uniqueId
 const lastUsedTitles: Record<string, string> = {}; // This should be populated with uniqueId to last-used title mapping
 
-function ChartPage({ sessions }: { sessions: Session[] }) {
+function ChartPage({ SessionEvents }: { SessionEvents: Session[] }) {
     const [chartType, setChartType] = useState<'session' | 'date'>('session');
   
     const formatTime = (seconds: number) => {
@@ -29,7 +29,7 @@ function ChartPage({ sessions }: { sessions: Session[] }) {
   
     const prepareChartData = () => {
       if (chartType === 'session') {
-        return sessions.map((session, index) => ({
+        return SessionEvents.map((session, index) => ({
           name: `Session ${index + 1}`,
           ...session.buckets.reduce((acc, bucket) => {
             const title = lastUsedTitles[bucket.uniqueId] || bucket.title; // Use last-used title if available
@@ -40,7 +40,7 @@ function ChartPage({ sessions }: { sessions: Session[] }) {
           }, {})
         }));
       } else {
-        return sessions.map(session => ({
+        return SessionEvents.map(session => ({
           name: new Date(session.startDate).toLocaleDateString(),
           ...session.buckets.reduce((acc, bucket) => {
             const title = lastUsedTitles[bucket.uniqueId] || bucket.title; // Use last-used title if available
@@ -54,7 +54,7 @@ function ChartPage({ sessions }: { sessions: Session[] }) {
     };
   
     const chartData = prepareChartData();
-    const bucketTitles = Array.from(new Set(sessions.flatMap(s => s.buckets.map(b => b.title))));
+    const bucketTitles = Array.from(new Set(SessionEvents.flatMap(s => s.buckets.map(b => b.title))));
   
     return (
       <div className="flex flex-col items-center p-4 overflow-auto">
@@ -102,7 +102,7 @@ function ChartPage({ sessions }: { sessions: Session[] }) {
             {chartData.map((row, index) => (
               <tr key={index}>
                 <td className="border p-2">{row.name}</td>
-                <td className="border p-2">{new Date(sessions[index].startDate).toLocaleString()}</td>
+                <td className="border p-2">{new Date(SessionEvents[index].startDate).toLocaleString()}</td>
                 {bucketTitles.map(title => (
                   <td key={title} className="border p-2">{formatTime((row as any)[title] || 0)}</td>
                 ))}

@@ -9,68 +9,76 @@ import backgroundImage from "/background.png";
 
 interface Box {
   id: number;
-  title: string;
-  time: number;
+  name: string;
+  seconds: number;
   isActive: boolean;
 }
 
-interface Session {
-  startDate: string;
-  endDate: string;
+interface SessionEvent {
+  sessionId: number;
+  startDatetime: string;
+  endDatetime: string;
   buckets: { id: number; title: string; time: number }[];
 }
 
 function App() {
-  const [boxes, setBoxes] = useState<Box[]>([
-    { id: 1, title: "Read", time: 0, isActive: false },
-    { id: 2, title: "Calls", time: 0, isActive: false },
-    { id: 3, title: "Code", time: 0, isActive: false },
-    { id: 4, title: "Write", time: 0, isActive: false },
-  ]);
-
+  const [boxes, setBoxes] = useState<Box[]>([]);
   const [activeBox, setActiveBox] = useState<number | null>(null);
   const [overallTime, setOverallTime] = useState(0);
   const [isOverallTimerRunning, setIsOverallTimerRunning] = useState(false);
   const [activePage, setActivePage] = useState('timer');
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+  const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([]);
+  const [sessionStartDatetime, setSessionStartDatetime] = useState<Date | null>(null);
 
+  // load saved boxes and session events from storage
   useEffect(() => {
     // Load saved boxes from storage when the app starts
     invoke<Box[]>("load_boxes").then((savedBoxes) => {
       if (savedBoxes && savedBoxes.length > 0) {
         setBoxes(savedBoxes);
       }
-    }).catch((error) => console.error("Failed to load boxes:", error));
+    }).catch((error) => {
+      console.error("Failed to load boxes:", error);
+      setBoxes([
+        { id: 1, name: "Read", number: 0, isActive: false },
+        { id: 2, name: "Calls", number: 0, isActive: false },
+        { id: 3, name: "Code", number: 0, isActive: false },
+        { id: 4, name: "Write", number: 0, isActive: false },
+      ]);
+    });
 
     // Load saved sessions from storage
-    invoke<Session[]>("load_sessions").then((savedSessions) => {
-      if (savedSessions && savedSessions.length > 0) {
-        setSessions(savedSessions);
+    invoke<SessionEvent[]>("load_sessions").then((savedSessionEvents) => {
+      if (savedSessionEvents && savedSessionEvents.length > 0) {
+        setSessionEvents(savedSessionEvents);
       }
     }).catch((error) => console.error("Failed to load sessions:", error));
   }, []);
 
+
+  // start the overall timer
   useEffect(() => {
-    let interval: number | undefined;
+    // TODO: update the sessionEvent history.
+    let intervalId: number | undefined;
     if (activeBox !== null) {
       if (!isOverallTimerRunning) {
         setIsOverallTimerRunning(true);
-        setSessionStartTime(new Date());
+        setSessionStartDatetime(new Date());
       }
-      interval = setInterval(() => {
+      intervalId = setInterval(() => {
         setBoxes(prevBoxes =>
           prevBoxes.map(box =>
             box.id === activeBox
-              ? { ...box, time: box.time + 1 }
+              ? { ...box, seconds: box.seconds + 1 }
               : box
           )
         );
         setOverallTime(prevTime => prevTime + 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => clearInterval(intervalId);
   }, [activeBox, isOverallTimerRunning]);
+
 
   const handleBoxClick = (id: number) => {
     setBoxes(prevBoxes =>
@@ -84,9 +92,16 @@ function App() {
   };
 
   const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    if (seconds >= 3600) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const remainingSeconds = seconds % 60;
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    } else {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
   };
 
   const resetAllTimers = () => {
@@ -95,28 +110,28 @@ function App() {
     setIsOverallTimerRunning(false);
     
     // Save the session data before resetting
-    if (sessionStartTime) {
-      const session: Session = {
-        startDate: sessionStartTime.toISOString(),
-        endDate: new Date().toISOString(),
-        buckets: boxes.map(box => ({ id: box.id, title: box.title, time: box.time }))
+    if (sessionStartDatetime) {
+      const session: SessionEvent = {
+        startDatetime: sessionStartDatetime.toISOString(),
+        endDatetime: new Date().toISOString(),
+        buckets: boxes.map(box => ({ id: box.id, title: box.name, seconds: box.seconds }))
       };
       
-      setSessions(prevSessions => [...prevSessions, session]);
+      setSessionEvents(prevSessionEvents => [...prevSessionEvents, session]);
       
       invoke("save_session", { session })
         .then(() => console.log("Session saved successfully"))
         .catch((error) => console.error("Failed to save session:", error));
     }
 
-    setSessionStartTime(null);
+    setSessionStartDatetime(null);
 
     setBoxes(prevBoxes =>
       prevBoxes.map(box => ({ ...box, time: 0, isActive: false }))
     );
 
     // Save the reset boxes state
-    invoke("save_boxes", { boxes: boxes.map(box => ({ ...box, time: 0, isActive: false })) })
+    invoke("save_boxes", { boxes: boxes.map(box => ({ ...box, seconds: 0, isActive: false })) })
       .then(() => console.log("Boxes saved successfully"))
       .catch((error) => console.error("Failed to save boxes:", error));
   };
@@ -129,7 +144,7 @@ function App() {
         <IconButton icon={Settings} onClick={() => setActivePage('settings')} isActive={activePage === 'settings'} />
       </div>
       {activePage === 'timer' && <TimerPage boxes={boxes} handleBoxClick={handleBoxClick} formatTime={formatTime} isOverallTimerRunning={isOverallTimerRunning} overallTime={overallTime} resetAllTimers={resetAllTimers} />}
-      {activePage === 'chart' && <ChartPage sessions={sessions} />}
+      {activePage === 'chart' && <ChartPage sessionEvents={sessionEvents} />}
       {activePage === 'settings' && <SettingsPage boxes={boxes} setBoxes={setBoxes} />}
     </div>
   );

@@ -4,7 +4,7 @@ import { Trash2, PlusCircle } from "lucide-react";
 interface Box {
   id: number; // This can be the display ID
   uniqueId: string; // Add this line for a unique identifier
-  title: string;
+  name: string;
   time: number;
   isActive: boolean;
 }
@@ -12,10 +12,10 @@ interface Box {
 function SettingsPage({ boxes, setBoxes }: { boxes: Box[]; setBoxes: React.Dispatch<React.SetStateAction<Box[]>> }) {
     const [googleSheetsUrl, setGoogleSheetsUrl] = useState('');
   
-    const handleRename = (id: number, newTitle: string) => {
+    const handleRename = (id: number, newName: string) => {
       setBoxes(prevBoxes =>
         prevBoxes.map(box =>
-          box.id === id ? { ...box, title: newTitle } : box
+          box.id === id ? { ...box, name: newName } : box
         )
       );
     };
@@ -26,7 +26,7 @@ function SettingsPage({ boxes, setBoxes }: { boxes: Box[]; setBoxes: React.Dispa
   
     const handleAdd = () => {
       const newId = Math.max(...boxes.map(box => box.id)) + 1;
-      setBoxes(prevBoxes => [...prevBoxes, { id: newId, title: "New Bucket", time: 0, isActive: false }]);
+      setBoxes(prevBoxes => [...prevBoxes, { id: newId, name: "New Bucket", time: 0, isActive: false }]);
     };
   
     return (
@@ -49,7 +49,7 @@ function SettingsPage({ boxes, setBoxes }: { boxes: Box[]; setBoxes: React.Dispa
         {boxes.map(box => (
           <div key={box.id} className="flex items-center mb-2 w-full max-w-md">
             <input
-              value={box.title}
+              value={box.name}
               onChange={(e) => handleRename(box.id, e.target.value)}
               className="flex-grow p-2 border rounded mr-2"
             />
