@@ -1,15 +1,9 @@
 import { useState } from "react";
 import { Trash2, PlusCircle } from "lucide-react";
+import { TimeBox } from "../types";
 
-interface Box {
-  id: number; // This can be the display ID
-  uniqueId: string; // Add this line for a unique identifier
-  name: string;
-  time: number;
-  isActive: boolean;
-}
 
-function SettingsPage({ boxes, setBoxes }: { boxes: Box[]; setBoxes: React.Dispatch<React.SetStateAction<Box[]>> }) {
+function SettingsPage({ timeBoxes, setBoxes }: { timeBoxes: TimeBox[]; setBoxes: React.Dispatch<React.SetStateAction<TimeBox[]>> }) {
     const [googleSheetsUrl, setGoogleSheetsUrl] = useState('');
   
     const handleRename = (id: number, newName: string) => {
@@ -25,8 +19,8 @@ function SettingsPage({ boxes, setBoxes }: { boxes: Box[]; setBoxes: React.Dispa
     };
   
     const handleAdd = () => {
-      const newId = Math.max(...boxes.map(box => box.id)) + 1;
-      setBoxes(prevBoxes => [...prevBoxes, { id: newId, name: "New Bucket", time: 0, isActive: false }]);
+      const newId = Math.max(...timeBoxes.map(timeBox => timeBox.id)) + 1;
+      setBoxes(prevBoxes => [...prevBoxes, { id: newId, name: "New Bucket", seconds: 0, isActive: false }]);
     };
   
     return (
@@ -46,14 +40,14 @@ function SettingsPage({ boxes, setBoxes }: { boxes: Box[]; setBoxes: React.Dispa
         </div>
   
         <h3 className="text-lg font-semibold mb-2">Time Buckets</h3>
-        {boxes.map(box => (
-          <div key={box.id} className="flex items-center mb-2 w-full max-w-md">
+        {timeBoxes.map(timeBox => (
+          <div key={timeBox.id} className="flex items-center mb-2 w-full max-w-md">
             <input
-              value={box.name}
-              onChange={(e) => handleRename(box.id, e.target.value)}
+              value={timeBox.name}
+              onChange={(e) => handleRename(timeBox.id, e.target.value)}
               className="flex-grow p-2 border rounded mr-2"
             />
-            <button onClick={() => handleDelete(box.id)} className="p-2 bg-red-500 text-white rounded">
+            <button onClick={() => handleDelete(timeBox.id)} className="p-2 bg-red-500 text-white rounded">
               <Trash2 size={16} />
             </button>
           </div>

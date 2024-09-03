@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-function Box({ title, time, isActive, onClick }: { title: string; time: string; isActive: boolean; onClick: () => void }) {
+function Box({ name, seconds, isActive, onClick }: { name: string; seconds: string; isActive: boolean; onClick: () => void }) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -12,8 +12,8 @@ function Box({ title, time, isActive, onClick }: { title: string; time: string; 
     >
       <div className="absolute inset-0 rounded-[30px] bg-gradient-to-br from-[#FFFFFF50] to-[#5FBCFF50]" />
       <div className={`relative flex flex-col justify-center items-center w-full h-full rounded-[calc(30px-1px)] bg-gradient-to-b from-white to-[#FF9874] ${isActive ? 'opacity-80' : ''}`}>
-        <h2>{title}</h2>
-        <p>{time}</p>
+        <h2>{name}</h2>
+        <p>{seconds}</p>
       </div>
     </div>
   );
