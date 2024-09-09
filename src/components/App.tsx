@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/tauri";
+import { v4 as uuidv4 } from 'uuid';
 import TimerPage from './TimerPage';
 import ChartPage from './ChartPage';
 import SettingsPage from './SettingsPage';
@@ -7,12 +7,11 @@ import IconButton from './IconButton';
 import { Timer, Settings, ChartColumn } from "lucide-react";
 import backgroundImage from "/background.png";
 import { TimeBox, SessionEvent } from "../types";
-
-
+import { getTimeBoxes, getSessionEvents, addSessionEvent } from "../dbInteraction";
 
 function App() {
   const [timeBoxes, setTimeBoxes] = useState<TimeBox[]>([]);
-  const [activeBox, setActiveBox] = useState<number | null>(null);
+  const [activeBox, setActiveBox] = useState<string | null>(null);
   const [overallTime, setOverallTime] = useState(0);
   const [isOverallTimerRunning, setIsOverallTimerRunning] = useState(false);
   const [activePage, setActivePage] = useState('timer');
@@ -22,32 +21,25 @@ function App() {
   // load saved boxes and session events from storage
   useEffect(() => {
     // Load saved boxes from storage when the app starts
-    invoke<TimeBox[]>("load_boxes").then((savedBoxes) => {
+    getTimeBoxes().then((savedBoxes) => {
       if (savedBoxes && savedBoxes.length > 0) {
         setTimeBoxes(savedBoxes);
       }
     }).catch((error) => {
       console.error("Failed to load boxes:", error);
-      setTimeBoxes([
-        { id: 1, name: "Read", seconds: 0, isActive: false },
-        { id: 2, name: "Calls", seconds: 0, isActive: false },
-        { id: 3, name: "Code", seconds: 0, isActive: false },
-        { id: 4, name: "Write", seconds: 0, isActive: false },
-      ]);
+      setTimeBoxes([]);
     });
 
     // Load saved sessions from storage
-    invoke<SessionEvent[]>("load_sessions").then((savedSessionEvents) => {
+    getSessionEvents().then((savedSessionEvents) => {
       if (savedSessionEvents && savedSessionEvents.length > 0) {
         setSessionEvents(savedSessionEvents);
       }
     }).catch((error) => console.error("Failed to load sessions:", error));
   }, []);
 
-
   // start the overall timer
   useEffect(() => {
-    // TODO: update the sessionEvent history.
     let intervalId: number | undefined;
     if (activeBox !== null) {
       if (!isOverallTimerRunning) {
@@ -68,13 +60,12 @@ function App() {
     return () => clearInterval(intervalId);
   }, [activeBox, isOverallTimerRunning]);
 
-
-  const handleBoxClick = (id: number) => {
+  const handleBoxClick = (id: string) => {
     setTimeBoxes(prevBoxes =>
-      prevBoxes.map(box =>
-        box.id === id
-          ? { ...box, isActive: true }
-          : { ...box, isActive: false }
+      prevBoxes.map(timeBox =>
+        timeBox.id === id
+          ? { ...timeBox, isActive: true }
+          : { ...timeBox, isActive: false }
       )
     );
     setActiveBox(id);
@@ -94,29 +85,27 @@ function App() {
   };
 
   const resetAllTimers = () => {
-    // Save the session data before resetting
     if (!sessionStartDatetime) {
-        alert("Ending a session, but no session was ever started");
-        return;
-      }
+      alert("Ending a session, but no session was ever started");
+      return;
+    }
     const activeTimeBox = timeBoxes.find(box => box.isActive);
     if (!activeTimeBox) {
       console.error("No active time box found when ending session");
       return;
     }
-    const session: SessionEvent = {
-      sessionId: sessionEvents.length + 1,
-      startDatetime: sessionStartDatetime?.toISOString(),
+    const sessionEvent: SessionEvent = {
+      id: uuidv4(),
+      timeBoxId: activeTimeBox.id,
+      startDatetime: sessionStartDatetime.toISOString(),
       endDatetime: new Date().toISOString(),
-      boxId: activeTimeBox.id,
-      boxTitle: activeTimeBox.name,
       seconds: activeTimeBox.seconds
     };
     
-    setSessionEvents(prevSessionEvents => [...prevSessionEvents, session]);
+    setSessionEvents(prevSessionEvents => [...prevSessionEvents, sessionEvent]);
     
     // persist session to disk
-    invoke("save_session", { session })
+    addSessionEvent(sessionEvent)
       .then(() => console.log("Session saved successfully"))
       .catch((error) => console.error("Failed to save session:", error));
 
@@ -140,7 +129,7 @@ function App() {
         <IconButton icon={Settings} onClick={() => setActivePage('settings')} isActive={activePage === 'settings'} />
       </div>
       {activePage === 'timer' && <TimerPage boxes={timeBoxes} handleBoxClick={handleBoxClick} formatTime={formatTime} isOverallTimerRunning={isOverallTimerRunning} overallTime={overallTime} resetAllTimers={resetAllTimers} />}
-      {activePage === 'chart' && <ChartPage sessionEvents={sessionEvents} />}
+      {activePage === 'chart' && <ChartPage sessionEvents={sessionEvents} timeBoxes={timeBoxes} />}
       {activePage === 'settings' && <SettingsPage timeBoxes={timeBoxes} setBoxes={setTimeBoxes} />}
     </div>
   );

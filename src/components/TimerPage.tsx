@@ -3,7 +3,7 @@ import { TimeBox } from "../types";
 import IconButton from './IconButton';
 import { StopCircle } from "lucide-react";
 
-function TimerPage({ boxes, handleBoxClick, formatTime, isOverallTimerRunning, overallTime, resetAllTimers }: { boxes: TimeBox[]; handleBoxClick: (id: number) => void; formatTime: (seconds: number) => string; isOverallTimerRunning: boolean; overallTime: number; resetAllTimers: () => void }) {
+function TimerPage({ boxes, handleBoxClick, formatTime, isOverallTimerRunning, overallTime, resetAllTimers }: { boxes: TimeBox[]; handleBoxClick: (id: string) => void; formatTime: (seconds: number) => string; isOverallTimerRunning: boolean; overallTime: number; resetAllTimers: () => void }) {
   return (
     <>
       <div className="flex flex-grow flex-wrap justify-center items-center gap-[10px] p-2 w-fit mx-auto overflow-auto">

@@ -1,15 +1,15 @@
 export interface TimeBox {
-    id: number;
+    id: string;
     name: string;
+    isDeleted: boolean;
     seconds: number;
     isActive: boolean;
 }
 
 export interface SessionEvent {
-    sessionId: number;
+    id: string;
+    timeBoxId: string;
     startDatetime: string;
     endDatetime: string;
-    boxId: number;
-    boxTitle: string;
     seconds: number;
-}
+} 

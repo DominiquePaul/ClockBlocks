@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { SessionEvent } from "../types";
+import { SessionEvent, TimeBox } from "../types";
 
-function ChartPage({ sessionEvents }: { sessionEvents: SessionEvent[] }) {
+function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[], timeBoxes: TimeBox[] }) {
     const [chartType, setChartType] = useState<'session' | 'date'>('session');
   
     const formatTime = (seconds: number) => {
@@ -14,18 +14,23 @@ function ChartPage({ sessionEvents }: { sessionEvents: SessionEvent[] }) {
   
     const prepareChartData = () => {
       if (chartType === 'session') {
-        return sessionEvents.map((session, index) => ({
-          name: `Session ${index + 1}`,
-          [session.boxTitle]: session.seconds
-        }));
+        return sessionEvents.map((session, index) => {
+          const timeBox = timeBoxes.find(box => box.id === session.timeBoxId.toString());
+          return {
+            name: `Session ${index + 1}`,
+            [timeBox?.name || 'Unknown']: session.seconds
+          };
+        });
       } else {
         const dateMap: Record<string, Record<string, number>> = {};
         sessionEvents.forEach(session => {
           const date = new Date(session.startDatetime).toLocaleDateString();
+          const timeBox = timeBoxes.find(box => box.id === session.timeBoxId.toString());
           if (!dateMap[date]) {
             dateMap[date] = {};
           }
-          dateMap[date][session.boxTitle] = (dateMap[date][session.boxTitle] || 0) + session.seconds;
+          const boxName = timeBox?.name || 'Unknown';
+          dateMap[date][boxName] = (dateMap[date][boxName] || 0) + session.seconds;
         });
         return Object.entries(dateMap).map(([date, data]) => ({
           name: date,
@@ -35,7 +40,7 @@ function ChartPage({ sessionEvents }: { sessionEvents: SessionEvent[] }) {
     };
   
     const chartData = prepareChartData();
-    const bucketTitles = Array.from(new Set(sessionEvents.map(s => s.boxTitle)));
+    const bucketTitles = Array.from(new Set(timeBoxes.map(box => box.name)));
   
     return (
       <div className="flex flex-col items-center p-4 overflow-auto">
@@ -95,4 +100,4 @@ function ChartPage({ sessionEvents }: { sessionEvents: SessionEvent[] }) {
     );
   }
 
-  export default ChartPage;
+export default ChartPage;
