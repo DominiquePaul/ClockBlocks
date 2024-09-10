@@ -1,9 +1,10 @@
 import Box from './Box';
-import { TimeBox } from "../types";
+import { TimeBox, Session } from "../types";
 import IconButton from './IconButton';
 import { StopCircle } from "lucide-react";
 
-function TimerPage({ boxes, handleBoxClick, formatTime, isOverallTimerRunning, overallTime, resetAllTimers }: { boxes: TimeBox[]; handleBoxClick: (id: string) => void; formatTime: (seconds: number) => string; isOverallTimerRunning: boolean; overallTime: number; resetAllTimers: () => void }) {
+function TimerPage({ boxes, handleTimeBoxClick, formatTime, activeSession, resetAllTimers }: {   boxes: TimeBox[]; handleTimeBoxClick: (id: string) => void; formatTime: (seconds: number) => string; activeSession: Session; resetAllTimers: () => void }) {
+  const isOverallTimerRunning = activeSession && activeSession.startDatetime
   return (
     <>
       <div className="flex flex-grow flex-wrap justify-center items-center gap-[10px] p-2 w-fit mx-auto overflow-auto">
@@ -13,13 +14,13 @@ function TimerPage({ boxes, handleBoxClick, formatTime, isOverallTimerRunning, o
             name={box.name}
             seconds={formatTime(box.seconds)}
             isActive={box.isActive}
-            onClick={() => handleBoxClick(box.id)}
+            onClick={() => handleTimeBoxClick(box.id)}
           />
         ))}
       </div>
       <div className="flex flex-row justify-center items-center h-[30px] mx-auto mb-4 rounded-2xl w-fit bg-[#D9D9D9] px-1" style={{ visibility: isOverallTimerRunning ? 'visible' : 'hidden' }}>
         <IconButton icon={StopCircle} onClick={resetAllTimers} isActive={true} />
-        <p className="px-2">{formatTime(overallTime)}</p>
+        <p className="px-2">{formatTime(activeSession.duration)}</p>
       </div>
     </>
   );

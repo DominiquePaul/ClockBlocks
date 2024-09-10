@@ -1,26 +1,38 @@
 import { useState } from "react";
 import { Trash2, PlusCircle } from "lucide-react";
 import { TimeBox } from "../types";
-
+import { renameTimeBox, addTimeBox, deleteTimeBox } from "../dbInteraction";
 
 function SettingsPage({ timeBoxes, setBoxes }: { timeBoxes: TimeBox[]; setBoxes: React.Dispatch<React.SetStateAction<TimeBox[]>> }) {
     const [googleSheetsUrl, setGoogleSheetsUrl] = useState('');
   
-    const handleRename = (id: number, newName: string) => {
-      setBoxes(prevBoxes =>
-        prevBoxes.map(box =>
-          box.id === id ? { ...box, name: newName } : box
-        )
-      );
+    const handleRename = async (id: string, newName: string) => {
+      try {
+        await renameTimeBox(id, newName);
+        setBoxes(prevBoxes =>
+          prevBoxes.map(box =>
+            box.id === id ? { ...box, name: newName } : box
+          )
+        );
+      } catch (error) {
+        console.error('Error renaming TimeBox:', error);
+        // Optionally, you could add some user feedback here
+      }
     };
   
-    const handleDelete = (id: number) => {
-      setBoxes(prevBoxes => prevBoxes.filter(box => box.id !== id));
+    const handleDelete = async (id: string) => {
+      try {
+        await deleteTimeBox(id);
+        setBoxes(prevBoxes => prevBoxes.filter(box => box.id !== id));
+      } catch (error) {
+        console.error('Error deleting TimeBox:', error);
+        // Optionally, add user feedback here
+      }
     };
   
-    const handleAdd = () => {
-      const newId = Math.max(...timeBoxes.map(timeBox => timeBox.id)) + 1;
-      setBoxes(prevBoxes => [...prevBoxes, { id: newId, name: "New Bucket", seconds: 0, isActive: false }]);
+    const handleAdd = async (name: string) => {
+      let newId = await addTimeBox(name);
+      setBoxes(prevBoxes => [...prevBoxes, { id: newId, name: name, seconds: 0, isActive: false, isDeleted: false }]);
     };
   
     return (
@@ -52,7 +64,7 @@ function SettingsPage({ timeBoxes, setBoxes }: { timeBoxes: TimeBox[]; setBoxes:
             </button>
           </div>
         ))}
-        <button onClick={handleAdd} className="mt-2 p-2 bg-green-500 text-white rounded flex items-center">
+        <button onClick={() => handleAdd("New Time Block")} className="mt-2 p-2 bg-green-500 text-white rounded flex items-center">
           <PlusCircle size={16} className="mr-1" /> Add New Bucket
         </button>
       </div>
