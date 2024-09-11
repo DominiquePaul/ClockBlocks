@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "clockblocks",
+  "private_key_id": "128fc11ffd69c750fd0da8c4c648c7b2509ce189",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCTpdOsO/d0fly9\n/ODcYVC3MhvbREzl9heWqbVwuKEZ+yxi420xaLrKogTiJJKuOQWYgWYGn736tR92\nFayg5gkosVL/tgHLMjLMDPKk0MAVFBmyZz5PAGinA6V6CwHc9/jEAhNw48oDbwEV\n7VDekU75CoQLw5RuoafMFxXDHZYyuTLhpTnUNyA6SDFJcOi/rQXhJ13jhTwGu7E1\n6fVTlXBOujzOPgkBzWNDpJAVfm6ePXkfZOwoKhoTObXBl9Y1MZ7CECSBJFFOHSBg\nLgFpSsi2LKjSlqIRavCYAg5m4ENrU5xoDA+Z0zOk7rsZQoa6SIAtU1VzNmVfCTQy\nTTMK62TfAgMBAAECggEABtS1Yiub2aEsjnunGZeFAdzByp55mzHTWI5g6cLgF988\n2b/vjJ7RLt519+7nkbVdGds5ZwANUDk5i63g63MzwLh81bcFBo8C0r0q1kDl9MkH\nyG8NmYn7P0vAuaXqKoqXGCvAo4F63YyUdY5pCed9PFy7WnAzgKheUUtPA0Zt+3TT\nQyabBF6H9TDJzdZBDMTdvMuBHMoREbDw4ckNj1VsVv/mtt9F0wKBPHzxAvZ2zVGW\nlcp/3g+AcBAcCCxryuSrwLZ5grdn+axEHUKQEBxvZlipbZeSyQsVvBFiCFN7TTgT\nJHG7NfcrfzW7NL0exm2tK2kL1l9TLDYg/bNH8pHGJQKBgQDFTaShjaEDvbIUNM69\nymJzgqn2gfEONSfBGYkcNswYfwOJ5BCoYJajBwyiL//gEJowSuBKszQf5aIQCt7z\nziINbcCPfHOV7qYfAZMWS1ubjp8/EFE4UPeHP1ogQqIzheGTCTRevpnQ51eTvTrR\n5q7M7YoukXXOV7qjpLrqv41wJQKBgQC/knv9qmYSCmtattNVxuJ7TRTQxMjOPVR4\n6/2cwPR3ztSKk2bglICtgyiCIM8vXbfk0UsN1B8CzapKCjIdyGKIThYCYzCf0ENn\nLWGCw5tvDrI/tGyfekfdIEYwICpC9wIY5kavnFx0uaZakJk2gjx9Qep0AKUlYZEF\n5gvfzzOfswKBgQCCyCmVUJznLumIjUxw72L88CKbHJzdbwyP6c5Bnm0A28hLsZn9\nEjEnlTehljGEo1yhIDC2Mz0c24jmG16Xuw5FWnemZLb1LkB9Ev0dbQwm+43BLp63\ntquswaiK88AyaM8SOKq3Fp48o+wgKPGBSuiZO+c5YP/2q54ydLHVgu1M5QKBgCij\nHCYtFUXSa/9sNNxHOhfJvBalB6uoGtkjxkKQM8uOVkunBPWyyrED133zE8AKc03Y\nj8E5M/LWSb829naW4T/kwIp1HAVqmkGywLKKZ9hhF7KnxTr3J3Niu0DOMejOmOVL\nQ8dQtdQU5ZLkhXuomMhBSUieMmoBjk/gArjRLTQ9AoGBAJtzjpSkyyth5bzzzsaw\nYcJ0gxtTqIsQ106GnNYsKQcanInuT/VY0vWgLBz/bbAi3cvOGOaTs5afe8O3BgYG\naN8wwvX+Ud1cptMyzSaFTRUDPDWOA/JaF8Hb4qsE0Qe05E/wYCBOR0x/OF/ozRnA\n53fzJk66hgLpA4qCqKVOcUtm\n-----END PRIVATE KEY-----\n",
+  "client_email": "clockblocksdesktopapp@clockblocks.iam.gserviceaccount.com",
+  "client_id": "103310042321424728930",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/clockblocksdesktopapp%40clockblocks.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

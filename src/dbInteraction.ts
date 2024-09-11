@@ -59,6 +59,7 @@ export async function maybeInitializeDatabase() {
       CREATE TABLE IF NOT EXISTS timeBoxes (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
+        isHidden BOOLEAN DEFAULT FALSE,
         isDeleted BOOLEAN DEFAULT FALSE
       )
     `);
@@ -150,12 +151,13 @@ export async function getTimeBoxes(): Promise<TimeBox[]> {
   const db = await getDatabase();
   if (!db) return [];
   
-  const timeBoxes = await db.select<(Omit<TimeBox, 'seconds' | 'isActive'> & { id: string, name: string, isDeleted: boolean })[]>('SELECT * FROM timeBoxes WHERE isDeleted = FALSE');
-  return timeBoxes.map(tb => ({
+  const timeBoxes = await db.select<(Omit<TimeBox, 'seconds' | 'isActive'> & { id: string, name: string, isHidden: boolean, isDeleted: boolean })[]>('SELECT * FROM timeBoxes WHERE isHidden = FALSE AND isDeleted = FALSE');
+  return timeBoxes.map((tb: Omit<TimeBox, 'seconds' | 'isActive'> & { id: string, name: string, isHidden: boolean, isDeleted: boolean }) => ({
     ...tb,
-    isDeleted: Boolean(tb.isDeleted),
     seconds: 0,
-    isActive: false
+    isActive: false,
+    isHidden: Boolean(tb.isHidden),
+    isDeleted: Boolean(tb.isDeleted)
   }));
 }
 
@@ -209,6 +211,18 @@ export async function upsertSession(session: Session): Promise<void> {
 }
 
 
+export async function toggleVisibilityTimeBox(id: string, setTo: boolean): Promise<void> {
+  const db = await getDatabase();
+  if (!db) return;
+
+  try {
+    await db.execute('UPDATE timeBoxes SET isHidden = $1 WHERE id = $2', [setTo, id]);
+  } catch (error) {
+    console.error('Error toggling TimeBox visibility:', error);
+    throw error;
+  }
+}
+
 export async function deleteTimeBox(id: string): Promise<void> {
   const db = await getDatabase();
   if (!db) return;
@@ -216,7 +230,7 @@ export async function deleteTimeBox(id: string): Promise<void> {
   try {
     await db.execute('UPDATE timeBoxes SET isDeleted = TRUE WHERE id = $1', [id]);
   } catch (error) {
-    console.error('Error deleting TimeBox:', error);
+    console.error('Error marking TimeBox as deleted:', error);
     throw error;
   }
 }
@@ -240,7 +254,7 @@ export async function addTimeBox(name: string): Promise<string> {
 
   try {
     await db.execute(
-      'INSERT INTO timeBoxes (id, name, isDeleted) VALUES ($1, $2, FALSE)',
+      'INSERT INTO timeBoxes (id, name, isHidden) VALUES ($1, $2, FALSE)',
       [id, name]
     );
     return id;

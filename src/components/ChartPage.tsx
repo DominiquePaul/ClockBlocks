@@ -13,24 +13,35 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
     };
   
     const prepareChartData = () => {
+      const sessions = Array.from(new Set(sessionEvents.map(event => event.sessionId)));
       if (chartType === 'session') {
-        return sessionEvents.map((session, index) => {
-          const timeBox = timeBoxes.find(box => box.id === session.timeBoxId.toString());
-          return {
-            name: `Session ${index + 1}`,
-            [timeBox?.name || 'Unknown']: session.seconds
-          };
-        });
+        let chartData: any[] = [];
+        for (const session of sessions) {
+          const sessionData = sessionEvents
+            .filter(event => event.sessionId === session)
+            .reduce((acc, event) => {
+              const timeBox = timeBoxes.find(box => box.id === event.timeBoxId);
+              const boxName = timeBox?.name || 'Unknown';
+              acc[boxName] = (acc[boxName] || 0) + event.seconds;
+              return acc;
+            }, {} as Record<string, number>);
+  
+          chartData.push({
+            name: `Session ${chartData.length + 1}`,
+            ...sessionData
+          });
+        }
+        return chartData;
       } else {
         const dateMap: Record<string, Record<string, number>> = {};
-        sessionEvents.forEach(session => {
-          const date = new Date(session.startDatetime).toLocaleDateString();
-          const timeBox = timeBoxes.find(box => box.id === session.timeBoxId.toString());
+        sessionEvents.forEach(event => {
+          const date = new Date(event.startDatetime).toLocaleDateString("en-GB");
+          const timeBox = timeBoxes.find(box => box.id === event.timeBoxId.toString());
           if (!dateMap[date]) {
             dateMap[date] = {};
           }
           const boxName = timeBox?.name || 'Unknown';
-          dateMap[date][boxName] = (dateMap[date][boxName] || 0) + session.seconds;
+          dateMap[date][boxName] = (dateMap[date][boxName] || 0) + event.seconds;
         });
         return Object.entries(dateMap).map(([date, data]) => ({
           name: date,
@@ -40,6 +51,7 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
     };
   
     const chartData = prepareChartData();
+    console.log("chartData", chartData);
     const bucketTitles = Array.from(new Set(timeBoxes.map(box => box.name)));
   
     return (
@@ -61,8 +73,9 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData}>
             <XAxis dataKey="name" />
-            <YAxis tickFormatter={(value) => formatTime(value)} />
+            <YAxis tickFormatter={formatTime} />
             <Tooltip 
+              cursor={{fill: 'transparent'}}
               formatter={(value: number, name: string) => [formatTime(value), name]}
               labelFormatter={(label) => `${chartType === 'session' ? 'Session' : 'Date'}: ${label}`}
             />
@@ -72,7 +85,6 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
             ))}
           </BarChart>
         </ResponsiveContainer>
-  
         <h3 className="text-lg font-semibold mt-8 mb-2">Time Allocation Table</h3>
         <table className="w-full border-collapse border">
           <thead>
@@ -88,7 +100,7 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
             {chartData.map((row, index) => (
               <tr key={index}>
                 <td className="border p-2">{row.name}</td>
-                <td className="border p-2">{new Date(sessionEvents[index].startDatetime).toLocaleString()}</td>
+                <td className="border p-2">{new Date(sessionEvents[index].startDatetime).toLocaleDateString("en-GB")}</td>
                 {bucketTitles.map(title => (
                   <td key={title} className="border p-2">{formatTime((row as any)[title] || 0)}</td>
                 ))}

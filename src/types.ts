@@ -1,9 +1,10 @@
 export interface TimeBox {
     id: string;
     name: string;
-    isDeleted: boolean;
     seconds: number;
     isActive: boolean;
+    isHidden: boolean; // Add this line if it doesn't exist
+    isDeleted: boolean;
 }
 
 export interface SessionEvent {
