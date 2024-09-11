@@ -8,7 +8,7 @@ import NavigationBar from './NavigationBar';
 import { TimeBox, SessionEvent, Session } from "../types";
 import { getTimeBoxes, getSessionEvents, addSessionEvent, upsertSession, maybeInitializeDatabase } from "../dbInteraction";
 
-await maybeInitializeDatabase();
+
 
 function App() {
   // State declarations
@@ -19,7 +19,9 @@ function App() {
   const [activeSession, setActiveSession] = useState<Session>(createNewSession());
 
   // Effects
-  useEffect(loadInitialData, []);
+  useEffect(() => {
+    loadInitialData();
+  }, []);
   useEffect(startTimer, [activeBox]);
 
   // Event handlers
@@ -150,7 +152,8 @@ function App() {
   );
 
   // Helper functions
-  function loadInitialData() {
+  async function loadInitialData() {
+    await maybeInitializeDatabase();
     loadTimeBoxes();
     loadSessionEvents();
   }

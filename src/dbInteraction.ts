@@ -28,12 +28,12 @@ export async function maybeInitializeDatabase() {
     return;
   }
   // Drop existing tables if they exist
-  await db.execute(`
-      DROP TABLE IF EXISTS sessionEvents;
-      DROP TABLE IF EXISTS metadata;
-      DROP TABLE IF EXISTS sessions;
-      DROP TABLE IF EXISTS timeBoxes;
-    `);
+  // await db.execute(`
+  //     DROP TABLE IF EXISTS sessionEvents;
+  //     DROP TABLE IF EXISTS metadata;
+  //     DROP TABLE IF EXISTS sessions;
+  //     DROP TABLE IF EXISTS timeBoxes;
+  //   `);
   
 
   // Check if any tables exist
