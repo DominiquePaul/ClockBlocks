@@ -1,23 +1,36 @@
 import Database from "tauri-plugin-sql-api";
+import { invoke } from '@tauri-apps/api/tauri';
 
 import { v4 as uuidv4 } from 'uuid';
 import { TimeBox, SessionEvent, Session } from './types';
 
-const DB_NAME = 'clockblocks.db';
-const DB_PATH = `sqlite:${DB_NAME}`;
+let cachedDevMode: boolean | null = null;
 
-
+async function checkDevMode(): Promise<boolean> {
+  if (cachedDevMode === null) {
+    cachedDevMode = await invoke('is_dev');
+  }
+  return cachedDevMode ?? false;
+}
 
 async function getDatabase(): Promise<Database> {
+  const isDev = await checkDevMode();
+  const dbName = isDev ? 'clockblocks_dev.db' : 'clockblocks.db';
+  const dbPath = `sqlite:${dbName}`;
+
   let db: Database | null = null;
   try {
-    db = await Database.load(DB_PATH);
-    // console.log('All existing tables dropped successfully');
+    db = await Database.load(dbPath);
   } catch (error) {
     console.error('Error setting up database:', error);
     throw error;
   }
   return db;
+}
+
+// Utility function to check dev mode elsewhere in your app
+export async function isDevMode(): Promise<boolean> {
+  return await checkDevMode();
 }
 
 // Function to initialize the database (create tables, etc.)
@@ -134,16 +147,13 @@ export async function maybeInitializeDatabase() {
 // Example functions for interacting with the database
 export async function addSessionEvent(sessionEvent: Omit<SessionEvent, 'id'>): Promise<void> {
   const db = await getDatabase();
-  if (!db) return;
-  
   try {
     await db.execute(
       'INSERT INTO sessionEvents (id, timeBoxId, sessionId, startDatetime, endDatetime, seconds) VALUES ($1, $2, $3, $4, $5, $6)',
       [uuidv4(), sessionEvent.timeBoxId, sessionEvent.sessionId, sessionEvent.startDatetime, sessionEvent.endDatetime, sessionEvent.seconds]
     );
-  } catch (error) {
-    console.error('Error adding session event:', error);
-    throw error;
+  } finally {
+    await db.close();
   }
 }
 

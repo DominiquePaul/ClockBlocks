@@ -256,6 +256,11 @@ async fn refresh_token(app_handle: tauri::AppHandle) -> Result<AuthToken, String
     Ok(new_token)
 }
 
+#[tauri::command]
+fn is_dev() -> bool {
+    cfg!(debug_assertions)
+}
+
 fn main() {
     let app_state = Arc::new(AppState {
         pkce_verifier: Mutex::new(None),
@@ -278,7 +283,8 @@ fn main() {
             load_auth_token,
             check_auth_token,
             exchange_code_for_tokens,
-            refresh_token
+            refresh_token,
+            is_dev
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
