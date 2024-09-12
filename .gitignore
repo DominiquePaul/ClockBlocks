@@ -1,5 +1,6 @@
 # Added by developer
 src-tauri/resources/google_client_secret.json
+src-tauri/resources/oauth.json
 
 # Logs
 logs

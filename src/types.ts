@@ -23,3 +23,9 @@ export interface Session {
     sessionEvents: SessionEvent[];
     duration: number;
 }
+
+export interface AuthToken {
+    access_token: string;
+    refresh_token: string;
+    expiry: number;
+  }

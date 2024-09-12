@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/tauri";
 import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from 'uuid';
 import TimerPage from './TimerPage';
@@ -5,10 +6,8 @@ import ChartPage from './ChartPage';
 import SettingsPage from './SettingsPage';
 import backgroundImage from "/background.png";
 import NavigationBar from './NavigationBar';
-import { TimeBox, SessionEvent, Session } from "../types";
+import { TimeBox, SessionEvent, Session, AuthToken } from "../types";
 import { getTimeBoxes, getSessionEvents, addSessionEvent, upsertSession, maybeInitializeDatabase } from "../dbInteraction";
-
-
 
 function App() {
   // State declarations
@@ -17,6 +16,86 @@ function App() {
   const [activePage, setActivePage] = useState('timer');
   const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([]);
   const [activeSession, setActiveSession] = useState<Session>(createNewSession());
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const isValid = await checkAuthStatus();
+      setIsAuthenticated(isValid);
+    };
+    initAuth();
+
+    const handleAuthResponse = (event: MessageEvent) => {
+      if (event.origin === 'http://localhost:3010' && event.data.type === 'GOOGLE_SIGN_IN_SUCCESS') {
+        setIsAuthenticated(true);
+        // You might want to save the token here as well
+        invoke('save_auth_token', { 
+          accessToken: event.data.accessToken, 
+          refreshToken: event.data.refreshToken, 
+          expiry: event.data.expiry 
+        });
+      }
+    };
+
+    window.addEventListener('message', handleAuthResponse);
+    return () => window.removeEventListener('message', handleAuthResponse);
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const isValid = await invoke('check_auth_token');
+      return isValid as boolean;
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      return false;
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      console.log('Starting Google Sign-In...');
+      const code: string = await invoke('start_google_sign_in');
+      console.log('Received authorization code:', code);
+      
+      // Add a small delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      console.log('Exchanging code for tokens...');
+      const tokens: AuthToken = await invoke('exchange_code_for_tokens', { code });
+      console.log('Tokens:', tokens);
+      setIsAuthenticated(true);
+
+      // Update this line to pass the correct parameters
+      await invoke('save_auth_token', { 
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiry: tokens.expiry
+      });
+    } catch (error) {
+      console.error('Google Sign-In error:', error);
+      // Add more detailed error logging
+      if (typeof error === 'string') {
+        console.error('Error details:', error);
+      } else if (error instanceof Error) {
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+    }
+  };
+
+  const handleSyncData = async () => {
+    try {
+      // Implement your data syncing logic here
+      console.log('Syncing data...');
+      // For example:
+      // await invoke('sync_data_to_google_sheets');
+      // You might want to show a success message to the user
+    } catch (error) {
+      console.error('Error syncing data:', error);
+      // You might want to show an error message to the user
+    }
+  };
 
   // Effects
   useEffect(() => {
@@ -146,8 +225,8 @@ function App() {
   // Render
   return (
     <div className="flex flex-col h-[100vh] bg-cover bg-center pt-3" style={{ backgroundImage: `url(${backgroundImage})` }}>
-      <NavigationBar activePage={activePage} setActivePage={setActivePage} />
-      {renderActivePage()}
+        <NavigationBar activePage={activePage} setActivePage={setActivePage} />
+        {renderActivePage()}
     </div>
   );
 
@@ -281,7 +360,13 @@ function App() {
       case 'chart':
         return <ChartPage sessionEvents={sessionEvents} timeBoxes={timeBoxes.filter(box => !box.isHidden)} />;
       case 'settings':
-        return <SettingsPage timeBoxes={timeBoxes} setBoxes={setTimeBoxes}/>;
+        return <SettingsPage 
+          timeBoxes={timeBoxes} 
+          setBoxes={setTimeBoxes} 
+          isAuthenticated={isAuthenticated} 
+          handleGoogleSignIn={handleGoogleSignIn}
+          handleSyncData={handleSyncData}
+        />;
       default:
         return null;
     }

@@ -23,6 +23,13 @@ See the split for each session either across 1. all sessions or 2. by date. You 
 ## Settings
 You can 1. define, rename or delete your blocks here and 2. link to a Google sheet to which your sessions will be synced. This is optional but you might find this useful (if you're such a time tracking nerd like me) to create additional plots or dig into the data yourself.
 
+# Roadmap
+
+- [ ] User can estbalish a OAuth connection with Google Sheets so record is synced with a google sheet where they can create their own charts.
+- [ ] User can right click on a time box and add/substract time to the clock. Useful for when you forgot to make a switch or when an activity happened before you opened your laptop that day.
+- [ ] User can edit previous sessions. Necessary for the case where a session was forgotten and it's distorting all the stats.
+- [ ] User can filter stats by date (or at least have a drop)
+
 # Technical info 
 The tech stack for this app is Tauri + React + TypeScript. Magic 🪄
 

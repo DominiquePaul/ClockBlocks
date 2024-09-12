@@ -1,12 +1,24 @@
-import { useState } from "react";
-import { Trash2, PlusCircle, Eye, EyeOff } from "lucide-react";
+import React from 'react';
+import { Trash2, PlusCircle, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { TimeBox } from "../types";
 import { renameTimeBox, addTimeBox, deleteTimeBox, toggleVisibilityTimeBox } from "../dbInteraction";
 import { ask } from '@tauri-apps/api/dialog';
+import GoogleSignInButton from './GoogleSignIn';
 
-function SettingsPage({ timeBoxes, setBoxes }: { timeBoxes: TimeBox[]; setBoxes: React.Dispatch<React.SetStateAction<TimeBox[]>> }) {
-    const [googleSheetsUrl, setGoogleSheetsUrl] = useState('');
-  
+function SettingsPage({ 
+  timeBoxes, 
+  setBoxes, 
+  isAuthenticated, 
+  handleGoogleSignIn,
+  handleSyncData
+}: { 
+  timeBoxes: TimeBox[]; 
+  setBoxes: React.Dispatch<React.SetStateAction<TimeBox[]>>;
+  isAuthenticated: boolean;
+  handleGoogleSignIn: () => Promise<void>;
+  handleSyncData: () => Promise<void>;
+}) {
+
     const handleRename = async (id: string, newName: string) => {
       try {
         await renameTimeBox(id, newName);
@@ -59,20 +71,6 @@ function SettingsPage({ timeBoxes, setBoxes }: { timeBoxes: TimeBox[]; setBoxes:
 
     return (
       <div className="flex flex-col items-center p-4 overflow-auto">
-        <h2 className="text-xl font-bold mb-4">Settings</h2>
-        
-        <div className="w-full max-w-md mb-6">
-          <label htmlFor="googleSheetsUrl" className="block mb-2">Google Sheets URL:</label>
-          <input
-            id="googleSheetsUrl"
-            type="url"
-            value={googleSheetsUrl}
-            onChange={(e) => setGoogleSheetsUrl(e.target.value)}
-            className="w-full p-2 border rounded"
-            placeholder="Enter Google Sheets URL"
-          />
-        </div>
-        
   
         <h3 className="text-lg font-semibold mb-2">Time Buckets</h3>
         {timeBoxes.filter(box => !box.isDeleted).map(timeBox => (
@@ -97,8 +95,30 @@ function SettingsPage({ timeBoxes, setBoxes }: { timeBoxes: TimeBox[]; setBoxes:
         <button onClick={() => handleAdd("New Time Block")} className="mt-2 p-2 bg-green-500 text-white rounded flex items-center">
           <PlusCircle size={16} className="mr-1" /> Add New Bucket
         </button>
+
+
+        <h2 className="text-xl font-bold mb-4 mt-8">Google Sheets Integration</h2>
+        
+        {!isAuthenticated ? (
+          <GoogleSignInButton 
+            onClick={handleGoogleSignIn} 
+            text="Sign in with Google"
+          />
+        ) : (
+          <div className="flex flex-col items-center">
+            <p className="mb-4">Connected to Google Sheets</p>
+            <button
+              onClick={handleSyncData}
+              className="p-2 bg-green-500 text-white rounded flex items-center"
+            >
+              <RefreshCw size={16} className="mr-2" /> Sync Data
+            </button>
+          </div>
+        )}
+      
+        
       </div>
     );
-  }
-  
+}
+
 export default SettingsPage;
