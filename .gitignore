@@ -1,3 +1,6 @@
+# Added by developer
+src-tauri/resources/google_client_secret.json
+
 # Logs
 logs
 *.log
@@ -22,5 +25,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
 
 

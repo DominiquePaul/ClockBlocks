@@ -48,19 +48,18 @@
         "save": true
       }
     },
-    "windows": [
-      {
-        "title": "Clock Blocks",
-        "fullscreen": false,
-        "width": 600,
-        "height": 400,
-        "resizable": true
-      }
-    ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com",
+      "dangerousRemoteDomainIpcAccess": [
+        {
+          "domain": "accounts.google.com",
+          "windows": ["main"],
+          "plugins": ["oauth"]
+        }
+      ]
     },
     "bundle": {
+      "resources": ["resources/google_client_secret.json"],
       "active": true,
       "targets": "all",
       "identifier": "com.clockblocks.app",
@@ -71,6 +70,15 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ]
-    }
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "ClockBlocks",
+        "width": 800,
+        "height": 600
+      }
+    ]
   }
 }
