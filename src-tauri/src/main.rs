@@ -39,6 +39,15 @@ struct AuthToken {
     expiry: u64,
 }
 
+#[derive(Serialize, Deserialize)]
+struct SessionEvent {
+    timeBoxName: String,  // Changed from time_box_name to timeBoxName
+    sessionId: String,    // Changed from session_id to sessionId
+    startDatetime: String, // Changed from start_datetime to startDatetime
+    endDatetime: Option<String>, // Changed from end_datetime to endDatetime
+    seconds: i32,
+}
+
 #[tauri::command]
 async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandle) -> Result<String, String> {
     let config: Value = serde_json::from_str(
@@ -263,7 +272,48 @@ fn is_dev() -> bool {
 }
 
 #[tauri::command]
+async fn save_sheet_id(app_handle: tauri::AppHandle, sheet_id: String) -> Result<(), String> {
+    let path = app_data_dir(&app_handle.config()).unwrap().join("sheet_id.txt");
+    fs::write(path, sheet_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn load_sheet_id(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = app_data_dir(&app_handle.config()).unwrap().join("sheet_id.txt");
+    if path.exists() {
+        fs::read_to_string(path).map(Some).map_err(|e| e.to_string())
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
 async fn create_new_sheet(app_handle: tauri::AppHandle, title: String) -> Result<String, String> {
+    // Try to load existing sheet ID
+    if let Some(sheet_id) = load_sheet_id(app_handle.clone()).await? {
+        // Check if the sheet still exists
+        let mut auth_token = load_auth_token(app_handle.clone()).await?
+            .ok_or("No auth token found")?;
+
+        // Check if token is expired and refresh if necessary
+        if Utc::now().timestamp() as u64 >= auth_token.expiry {
+            auth_token = refresh_token(app_handle.clone()).await?;
+        }
+
+        let client = Client::new();
+        let response = client
+            .get(&format!("https://sheets.googleapis.com/v4/spreadsheets/{}", sheet_id))
+            .bearer_auth(&auth_token.access_token)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if response.status().is_success() {
+            return Ok(sheet_id);
+        }
+    }
+
+    // If we reach here, we need to create a new sheet
     let mut auth_token = load_auth_token(app_handle.clone()).await?
         .ok_or("No auth token found")?;
 
@@ -295,7 +345,90 @@ async fn create_new_sheet(app_handle: tauri::AppHandle, title: String) -> Result
         .ok_or("Spreadsheet ID not found in response")?
         .to_string();
 
+    // Save the new sheet ID
+    save_sheet_id(app_handle, spreadsheet_id.clone()).await?;
+
     Ok(spreadsheet_id)
+}
+
+#[tauri::command]
+async fn write_session_events_to_sheet(app_handle: tauri::AppHandle, sheet_id: String, session_events: Vec<SessionEvent>) -> Result<(), String> {
+    let mut auth_token = load_auth_token(app_handle.clone()).await?
+        .ok_or("No auth token found")?;
+
+    // Check if token is expired and refresh if necessary
+    if Utc::now().timestamp() as u64 >= auth_token.expiry {
+        auth_token = refresh_token(app_handle.clone()).await?;
+    }
+
+    let client = Client::new();
+
+    // Add headers to the sheet
+    add_headers_to_sheet(&client, &sheet_id, &auth_token.access_token).await?;
+
+    // Prepare the data for the API request
+    let values: Vec<Vec<String>> = session_events.into_iter().map(|event| {
+        vec![
+            event.timeBoxName,
+            event.sessionId,
+            event.startDatetime,
+            event.endDatetime.unwrap_or_default(),
+            event.seconds.to_string(),
+        ]
+    }).collect();
+
+    let request_body = json!({
+        "values": values,
+    });
+
+    // Make the API request to update the sheet
+    let response = client
+        .post(&format!(
+            "https://sheets.googleapis.com/v4/spreadsheets/{}/values/A1:append?valueInputOption=USER_ENTERED",
+            sheet_id
+        ))
+        .bearer_auth(&auth_token.access_token)
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send request: {}", e.to_string()))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let error_body = response.text().await.map_err(|e| e.to_string())?;
+        return Err(format!("Failed to write to sheet: {} - {}", status, error_body));
+    }
+
+    Ok(())
+}
+
+async fn add_headers_to_sheet(client: &Client, sheet_id: &str, access_token: &str) -> Result<(), String> {
+    let headers = vec![
+        vec!["Time Box Name", "Session ID", "Start Datetime", "End Datetime", "Seconds"]
+    ];
+
+    let request_body = json!({
+        "values": headers,
+    });
+
+    let response = client
+        .post(&format!(
+            "https://sheets.googleapis.com/v4/spreadsheets/{}/values/A1:append?valueInputOption=USER_ENTERED",
+            sheet_id
+        ))
+        .bearer_auth(access_token)
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send request: {}", e.to_string()))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let error_body = response.text().await.map_err(|e| e.to_string())?;
+        return Err(format!("Failed to add headers: {} - {}", status, error_body));
+    }
+
+    Ok(())
 }
 
 fn main() {
@@ -322,7 +455,10 @@ fn main() {
             exchange_code_for_tokens,
             refresh_token,
             is_dev,
-            create_new_sheet
+            create_new_sheet,
+            save_sheet_id,
+            load_sheet_id,
+            write_session_events_to_sheet
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

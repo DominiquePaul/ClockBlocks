@@ -84,13 +84,29 @@ function App() {
     }
   };
 
-  const handleSyncData = async (): Promise<void> => {
+  const handleSyncData = async () => {
     try {
-      const sheetId = await invoke('create_new_sheet', { title: "ClockBlocks sheet" });
-      console.log('New sheet created with ID:', sheetId);
+      const sheetId = await invoke('create_new_sheet', { title: "ClockBlocks Data" });
+      console.log('Syncing sheet with ID:', sheetId);
+      
+      const timeBoxMap = timeBoxes.reduce((acc, box) => {
+        acc[box.id] = box.name;
+        return acc;
+      }, {} as Record<string, string>);
+
+      const formattedSessionEvents = sessionEvents.map(({ id, ...event }) => ({
+        ...event,
+        timeBoxName: timeBoxMap[event.timeBoxId] || 'Unknown',
+      }));
+      
+      await invoke('write_session_events_to_sheet', { 
+        sheetId: sheetId, 
+        sessionEvents: formattedSessionEvents 
+      });
+      
+      console.log('Session events synced successfully');
     } catch (error) {
-      console.error('Error creating new sheet:', error);
-      throw error;
+      console.error('Error syncing session events:', error);
     }
   };
 
