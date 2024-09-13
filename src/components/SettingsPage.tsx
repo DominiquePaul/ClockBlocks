@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trash2, PlusCircle, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { TimeBox } from "../types";
 import { renameTimeBox, addTimeBox, deleteTimeBox, toggleVisibilityTimeBox } from "../dbInteraction";
 import { ask } from '@tauri-apps/api/dialog';
 import GoogleSignInButton from './GoogleSignIn';
+import { invoke } from '@tauri-apps/api/tauri'
+
 
 function SettingsPage({ 
   timeBoxes, 
@@ -15,9 +17,15 @@ function SettingsPage({
   timeBoxes: TimeBox[]; 
   setBoxes: React.Dispatch<React.SetStateAction<TimeBox[]>>;
   isAuthenticated: boolean;
-  handleGoogleSignIn: () => Promise<void>;
-  handleSyncData: () => Promise<void>;
+  handleGoogleSignIn: () => Promise<boolean>;
+  handleSyncData: () => Promise<string | undefined>;
 }) {
+
+    const [sheetURL, setSheetURL] = useState<string | undefined>(undefined);
+
+    useEffect(() => {
+      getSheetURL().then(setSheetURL);
+    }, []);
 
     const handleRename = async (id: string, newName: string) => {
       try {
@@ -69,6 +77,20 @@ function SettingsPage({
       }
     };
 
+    async function getSheetURL(): Promise<string | undefined> {
+      try {
+        const sheetId = await invoke('get_sheet_id')
+        if (sheetId) {
+          return `https://docs.google.com/spreadsheets/d/${sheetId}`
+        } else {
+          return undefined
+        }
+      } catch (error) {
+        console.error('Error getting sheet ID:', error)
+        return undefined
+      }
+    }
+
     return (
       <div className="flex flex-col items-center p-4 overflow-auto">
   
@@ -101,12 +123,21 @@ function SettingsPage({
         
         {!isAuthenticated ? (
           <GoogleSignInButton 
-            onClick={handleGoogleSignIn} 
+            onClick={async () => {
+              const success = await handleGoogleSignIn();
+              if (success) {
+                await handleSyncData();
+              }
+            }}
             text="Sign in with Google"
           />
         ) : (
           <div className="flex flex-col items-center">
-            <p className="mb-4">Connected to Google Sheets</p>
+            {sheetURL ? (
+              <p className="mb-4">Your data is being synced to <a href={sheetURL} target="_blank" rel="noopener noreferrer" className="underline">this Google Sheet</a>.</p>
+            ) : (
+              <p className="mb-4">No sync yet, press button</p>
+            )}
             <button
               onClick={handleSyncData}
               className="p-2 bg-green-500 text-white rounded flex items-center"

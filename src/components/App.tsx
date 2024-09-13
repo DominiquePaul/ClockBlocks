@@ -8,7 +8,7 @@ import backgroundImage from "/background.png";
 import NavigationBar from './NavigationBar';
 import { TimeBox, SessionEvent, Session, AuthToken } from "../types";
 import { getTimeBoxes, getSessionEvents, addSessionEvent, upsertSession, maybeInitializeDatabase } from "../dbInteraction";
-
+import { handleSyncData } from "../writeToGSheet";
 function App() {
   // State declarations
   const [timeBoxes, setTimeBoxes] = useState<TimeBox[]>([]);
@@ -51,7 +51,7 @@ function App() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (): Promise<boolean> => {
     try {
       console.log('Starting Google Sign-In...');
       const code: string = await invoke('start_google_sign_in');
@@ -71,6 +71,7 @@ function App() {
         refreshToken: tokens.refresh_token,
         expiry: tokens.expiry
       });
+      return true;
     } catch (error) {
       console.error('Google Sign-In error:', error);
       // Add more detailed error logging
@@ -81,34 +82,11 @@ function App() {
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
       }
+      return false;
     }
   };
 
-  const handleSyncData = async () => {
-    try {
-      const sheetId = await invoke('create_new_sheet', { title: "ClockBlocks Data" });
-      console.log('Syncing sheet with ID:', sheetId);
-      
-      const timeBoxMap = timeBoxes.reduce((acc, box) => {
-        acc[box.id] = box.name;
-        return acc;
-      }, {} as Record<string, string>);
-
-      const formattedSessionEvents = sessionEvents.map(({ id, ...event }) => ({
-        ...event,
-        timeBoxName: timeBoxMap[event.timeBoxId] || 'Unknown',
-      }));
-      
-      await invoke('write_session_events_to_sheet', { 
-        sheetId: sheetId, 
-        sessionEvents: formattedSessionEvents 
-      });
-      
-      console.log('Session events synced successfully');
-    } catch (error) {
-      console.error('Error syncing session events:', error);
-    }
-  };
+  
 
   // Effects
   useEffect(() => {
@@ -378,7 +356,7 @@ function App() {
           setBoxes={setTimeBoxes} 
           isAuthenticated={isAuthenticated} 
           handleGoogleSignIn={handleGoogleSignIn}
-          handleSyncData={handleSyncData}
+          handleSyncData={() => handleSyncData()}
         />;
       default:
         return null;
