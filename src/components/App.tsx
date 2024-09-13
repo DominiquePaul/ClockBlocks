@@ -84,16 +84,13 @@ function App() {
     }
   };
 
-  const handleSyncData = async () => {
+  const handleSyncData = async (): Promise<void> => {
     try {
-      // Implement your data syncing logic here
-      console.log('Syncing data...');
-      // For example:
-      // await invoke('sync_data_to_google_sheets');
-      // You might want to show a success message to the user
+      const sheetId = await invoke('create_new_sheet', { title: "ClockBlocks sheet" });
+      console.log('New sheet created with ID:', sheetId);
     } catch (error) {
-      console.error('Error syncing data:', error);
-      // You might want to show an error message to the user
+      console.error('Error creating new sheet:', error);
+      throw error;
     }
   };
 

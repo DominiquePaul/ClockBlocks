@@ -26,6 +26,7 @@ use oauth2::basic::BasicClient;
 use url::Url;
 use oauth2::reqwest::async_http_client;
 use std::sync::{Arc, Mutex};
+use serde_json::json;
 
 struct AppState {
     pkce_verifier: Mutex<Option<String>>,
@@ -147,7 +148,7 @@ async fn check_auth_token(app_handle: tauri::AppHandle) -> Result<bool, String> 
 }
 
 #[tauri::command]
-async fn exchange_code_for_tokens(window: tauri::Window, app_handle: tauri::AppHandle, code: String) -> Result<AuthToken, String> {
+async fn exchange_code_for_tokens(_window: tauri::Window, app_handle: tauri::AppHandle, code: String) -> Result<AuthToken, String> {
     println!("Exchanging code for tokens...");
     let config: Value = serde_json::from_str(
         &fs::read_to_string("resources/google_client_secret.json").expect("Failed to read config file")
@@ -261,6 +262,42 @@ fn is_dev() -> bool {
     cfg!(debug_assertions)
 }
 
+#[tauri::command]
+async fn create_new_sheet(app_handle: tauri::AppHandle, title: String) -> Result<String, String> {
+    let mut auth_token = load_auth_token(app_handle.clone()).await?
+        .ok_or("No auth token found")?;
+
+    // Check if token is expired and refresh if necessary
+    if Utc::now().timestamp() as u64 >= auth_token.expiry {
+        auth_token = refresh_token(app_handle.clone()).await?;
+    }
+
+    let client = Client::new();
+    let response = client
+        .post("https://sheets.googleapis.com/v4/spreadsheets")
+        .bearer_auth(&auth_token.access_token)
+        .json(&json!({
+            "properties": {
+                "title": title
+            }
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !response.status().is_success() {
+        return Err(format!("Failed to create sheet: {}", response.status()));
+    }
+
+    let sheet_data: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+    let spreadsheet_id = sheet_data["spreadsheetId"]
+        .as_str()
+        .ok_or("Spreadsheet ID not found in response")?
+        .to_string();
+
+    Ok(spreadsheet_id)
+}
+
 fn main() {
     let app_state = Arc::new(AppState {
         pkce_verifier: Mutex::new(None),
@@ -284,7 +321,8 @@ fn main() {
             check_auth_token,
             exchange_code_for_tokens,
             refresh_token,
-            is_dev
+            is_dev,
+            create_new_sheet
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
