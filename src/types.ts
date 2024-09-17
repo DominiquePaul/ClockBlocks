@@ -3,7 +3,7 @@ export interface TimeBox {
     name: string;
     seconds: number;
     isActive: boolean;
-    isHidden: boolean; // Add this line if it doesn't exist
+    isHidden: boolean;
     isDeleted: boolean;
 }
 

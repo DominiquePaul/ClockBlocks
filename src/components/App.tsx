@@ -232,7 +232,7 @@ function App() {
     getTimeBoxes()
       .then((savedBoxes) => {
         if (savedBoxes && savedBoxes.length > 0) {
-          setTimeBoxes(savedBoxes.filter(box => !box.isHidden));
+          setTimeBoxes(savedBoxes);
         }
       })
       .catch((error) => {

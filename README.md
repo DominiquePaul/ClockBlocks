@@ -1,3 +1,8 @@
+# Urgent todos
+
+- [ ] When i hide and unhide a category its hidden or being deleted (might be connected to changing the view)
+- [ ] Cant click google sheets integration
+
 # Clock Blocks
 
 CB allows you to understand how you're splitting your time at work, working on a project or doing something completely different. 

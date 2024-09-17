@@ -161,14 +161,14 @@ export async function getTimeBoxes(): Promise<TimeBox[]> {
   const db = await getDatabase();
   if (!db) return [];
   
-  const timeBoxes = await db.select<(Omit<TimeBox, 'seconds' | 'isActive'> & { id: string, name: string, isHidden: boolean, isDeleted: boolean })[]>('SELECT * FROM timeBoxes WHERE isHidden = FALSE AND isDeleted = FALSE');
-  return timeBoxes.map((tb: Omit<TimeBox, 'seconds' | 'isActive'> & { id: string, name: string, isHidden: boolean, isDeleted: boolean }) => ({
+  const timeBoxes = await db.select<{ id: string, name: string, isHidden: number, isDeleted: number }[]>('SELECT * FROM timeBoxes WHERE isDeleted = 0');
+  return timeBoxes.map((tb) => ({
     ...tb,
     seconds: 0,
     isActive: false,
-    isHidden: Boolean(tb.isHidden),
-    isDeleted: Boolean(tb.isDeleted)
-  }));
+    isHidden: tb.isHidden === 1,
+    isDeleted: tb.isDeleted === 1
+  } as TimeBox));
 }
 
 export async function getSessionEvents(): Promise<SessionEvent[]> {
@@ -226,7 +226,7 @@ export async function toggleVisibilityTimeBox(id: string, setTo: boolean): Promi
   if (!db) return;
 
   try {
-    await db.execute('UPDATE timeBoxes SET isHidden = $1 WHERE id = $2', [setTo, id]);
+    await db.execute('UPDATE timeBoxes SET isHidden = $1 WHERE id = $2', [setTo ? 1 : 0, id]);
   } catch (error) {
     console.error('Error toggling TimeBox visibility:', error);
     throw error;
@@ -238,7 +238,7 @@ export async function deleteTimeBox(id: string): Promise<void> {
   if (!db) return;
 
   try {
-    await db.execute('UPDATE timeBoxes SET isDeleted = TRUE WHERE id = $1', [id]);
+    await db.execute('UPDATE timeBoxes SET isDeleted = $1 WHERE id = $2', [1, id]);
   } catch (error) {
     console.error('Error marking TimeBox as deleted:', error);
     throw error;
@@ -264,8 +264,8 @@ export async function addTimeBox(name: string): Promise<string> {
 
   try {
     await db.execute(
-      'INSERT INTO timeBoxes (id, name, isHidden) VALUES ($1, $2, FALSE)',
-      [id, name]
+      'INSERT INTO timeBoxes (id, name, isHidden, isDeleted) VALUES ($1, $2, $3, $4)',
+      [id, name, 0, 0]
     );
     return id;
   } catch (error) {
