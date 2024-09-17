@@ -28,9 +28,14 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
   
           chartData.push({
             name: `Session ${chartData.length + 1}`,
+            startDatetime: sessionEvents.filter(event => event.sessionId === session)
+                                        .reduce((earliest, event) => 
+                                            event.startDatetime < earliest.startDatetime ? event : earliest
+                                        ).startDatetime,
             ...sessionData
           });
         }
+        console.log("chartData", chartData);
         return chartData;
       } else {
         const dateMap: Record<string, Record<string, number>> = {};
@@ -100,7 +105,12 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
             {chartData.map((row, index) => (
               <tr key={index}>
                 <td className="border p-2">{row.name}</td>
-                <td className="border p-2">{new Date(sessionEvents[index].startDatetime).toLocaleDateString("en-GB")}</td>
+                <td className="border p-2">
+                  {chartType === 'session' 
+                    ? new Date(row.startDatetime).toLocaleDateString("en-GB")
+                    : row.name
+                  }
+                </td>
                 {bucketTitles.map(title => (
                   <td key={title} className="border p-2">{formatTime((row as any)[title] || 0)}</td>
                 ))}
