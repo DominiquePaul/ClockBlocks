@@ -1,8 +1,3 @@
-# Urgent todos
-
-- [ ] When i hide and unhide a category its hidden or being deleted (might be connected to changing the view)
-- [ ] Cant click google sheets integration
-
 # Clock Blocks
 
 CB allows you to understand how you're splitting your time at work, working on a project or doing something completely different. 
@@ -30,9 +25,9 @@ You can 1. define, rename or delete your blocks here and 2. link to a Google she
 
 # Roadmap
 
-- [ ] User can estbalish a OAuth connection with Google Sheets so record is synced with a google sheet where they can create their own charts.
-- [ ] User can right click on a time box and add/substract time to the clock. Useful for when you forgot to make a switch or when an activity happened before you opened your laptop that day.
-- [ ] User can edit previous sessions. Necessary for the case where a session was forgotten and it's distorting all the stats.
+- [x] User can estbalish a OAuth connection with Google Sheets so record is synced with a google sheet where they can create their own charts.
+- [ ] User can somehow make edits to tracked time. Most likely interface is that you get to rewrite
+- [ ] Charts: Show a Horizontal bar graph 
 - [ ] User can filter stats by date (or at least have a drop)
 
 # Technical info 
