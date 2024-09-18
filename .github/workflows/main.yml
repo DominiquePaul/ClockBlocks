@@ -36,26 +36,21 @@ jobs:
       uses: actions/checkout@v4
     - name: Setup ARM build environment
       run: |
-          rustup target add aarch64-unknown-linux-gnu
-          sudo apt install gcc-aarch64-linux-gnu
           sudo dpkg --add-architecture arm64
-          . /etc/os-release
-          echo "using Ubuntu with codename $VERSION_CODENAME"
-          echo "deb [arch=armhf,arm64] http://ports.ubuntu.com/ubuntu-ports $VERSION_CODENAME main restricted" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=armhf,arm64] http://ports.ubuntu.com/ubuntu-ports $VERSION_CODENAME-updates main restricted" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=armhf,arm64] http://ports.ubuntu.com/ubuntu-ports $VERSION_CODENAME universe" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=armhf,arm64] http://ports.ubuntu.com/ubuntu-ports $VERSION_CODENAME-updates universe" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=armhf,arm64] http://ports.ubuntu.com/ubuntu-ports $VERSION_CODENAME multiverse" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=armhf,arm64] http://ports.ubuntu.com/ubuntu-ports $VERSION_CODENAME-updates multiverse" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=armhf,arm64] http://ports.ubuntu.com/ubuntu-ports $VERSION_CODENAME-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=armhf,arm64] http://ports.ubuntu.com/ubuntu-ports $VERSION_CODENAME-security main restricted" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=armhf,arm64] http://ports.ubuntu.com/ubuntu-ports $VERSION_CODENAME-security universe" | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=armhf,arm64] http://ports.ubuntu.com/ubuntu-ports $VERSION_CODENAME-security multiverse" | sudo tee -a /etc/apt/sources.list
+          sudo cp /etc/apt/sources.list /etc/apt/sources.list.d/arm64.list
+          sudo sed -i 's/deb http/deb [arch=amd64] http/g' /etc/apt/sources.list
+          sudo sed -i 's/deb http/deb [arch=arm64] http/g' /etc/apt/sources.list.d/arm64.list
           sudo apt update
-          sudo apt upgrade -y
-          sudo apt install libwebkit2gtk-4.0-dev:arm64 -y
-          sudo apt install libssl-dev:arm64 -y
+          sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
+          sudo apt install -y libwebkit2gtk-4.0-dev:arm64 libssl-dev:arm64
           export PKG_CONFIG_SYSROOT_DIR=/usr/aarch64-linux-gnu/
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+    - name: Build ARM64 package
+      run: |
           pnpm install
           pnpm rls --target aarch64-unknown-linux-gnu
     - name: Upload deb bundle
