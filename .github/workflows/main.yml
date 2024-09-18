@@ -1,202 +1,62 @@
-name: Publish Release
+name: 'publish'
+
 on:
   push:
-    tags:
-      - 'v*'
-    branches: [main]
-  workflow_dispatch:
+    branches:
+      - release
 
-permissions:
-  contents: write
-
-env:
-  APP_NAME: "ClockBlocks"
+# This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
 
 jobs:
-  changelog:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Build changelog
-        id: build_changelog
-        run: |
-          # NOTE: if commits subjects are standardized, you can filter the git log based on feat: and fix:
-          # and then replace "feat:" with "New: " and "fix:" with "Fixed "
-          # when AI gets good, we can also summarized commits into a bullet point list
-          PREV_TAG=$(git tag --list v* | tail -n2 | head -n1)
-          echo "changelog=$(git log $PREV_TAG...${{ github.ref_name }} --pretty=format:"- %s")" >> $GITHUB_OUTPUT
-    outputs:
-      changelog: ${{ steps.build_changelog.outputs.changelog }}
-  build-arm:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    - name: Setup ARM build environment
-      run: |
-        sudo dpkg --add-architecture arm64
-        sudo tee /etc/apt/sources.list > /dev/null <<EOT
-        deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
-        deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted universe multiverse
-        deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-backports main restricted universe multiverse
-        deb [arch=amd64] http://security.ubuntu.com/ubuntu jammy-security main restricted universe multiverse
-        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy main restricted universe multiverse
-        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main restricted universe multiverse
-        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-backports main restricted universe multiverse
-        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-security main restricted universe multiverse
-        EOT
-        sudo apt update
-        sudo apt upgrade -y
-        sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu -y
-        sudo apt install libwebkit2gtk-4.0-dev:arm64 libssl-dev:arm64 libgtk-3-dev:arm64 libayatana-appindicator3-dev:arm64 librsvg2-dev:arm64 -y
-        rustup target add aarch64-unknown-linux-gnu
-        echo "[target.aarch64-unknown-linux-gnu]" >> ~/.cargo/config
-        echo "linker = \"aarch64-linux-gnu-gcc\"" >> ~/.cargo/config
-        echo "ar = \"aarch64-linux-gnu-ar\"" >> ~/.cargo/config
-        echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-        echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig" >> $GITHUB_ENV
-        echo "PKG_CONFIG_SYSROOT_DIR=/" >> $GITHUB_ENV
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 'lts/*'
-        cache: pnpm
-    - name: Install dependencies and build
-      run: |
-        pnpm install
-        pnpm tauri build --target aarch64-unknown-linux-gnu
-      env:
-        PKG_CONFIG_ALLOW_CROSS: 1
-        PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
-        PK_CONFIG_SYSROOT_DIR: /
-    - name: Upload deb bundle
-      uses: actions/upload-artifact@v4
-      with:
-        name: ARM Debian File
-        path: src-tauri/target/release/bundle/deb/*arm64.deb
-  release:
+  publish-tauri:
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - platform: 'macos-latest' # for Arm based macs (M1 and above).
+            args: '--target aarch64-apple-darwin'
+          - platform: 'macos-latest' # for Intel based macs.
+            args: '--target x86_64-apple-darwin'
+          - platform: 'ubuntu-22.04' # for Tauri v1 you could replace this with ubuntu-20.04.
+            args: ''
+          - platform: 'windows-latest'
+            args: ''
+
     runs-on: ${{ matrix.platform }}
-    needs: [changelog]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # build the changelog based on the commit messages between the versioned tags
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node.js
+      - name: setup node
         uses: actions/setup-node@v4
-        # NOTE: enterprise developers may hard code a version
         with:
-          node-version: 'lts/*'
-          cache: pnpm
-          # node-version-file: '.nvmrc'
+          node-version: lts/*
 
-      - name: Setup Rust
-        run: |
-          rustup update --no-self-update
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
         with:
-          workspaces: './src-tauri -> target'
+          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: Install Ubuntu dependencies
-        if: matrix.platform == 'ubuntu-latest'
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
         run: |
-          sudo apt update
-          xargs sudo apt install -y < environment/apt_packages.txt
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+        # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
+        # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
 
-      - name: Install frontend
-        run: |
-          pnpm install
+      - name: install frontend dependencies
+        run: yarn install # change this to npm, pnpm or bun depending on which one you use.
 
-      - name: CI Build
-        if: ${{ github.ref_type == 'branch' }}
-        run: |
-          pnpm tauri build
-
-      - name: CI Upload Windows
-        if: ${{ github.ref_type == 'branch' && matrix.platform == 'windows-latest' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: 'Windows Installers'
-          path: |
-            src-tauri/release/bundle/msi/*.msi
-            src-tauri/release/bundle/nsis/*.exe
-
-      - name: CI Upload macOS
-        if: ${{ github.ref_type == 'branch' && matrix.platform == 'macos-latest' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: 'macOS Installer'
-          path: |
-            src-tauri/release/bundle/dmg/*.dmg
-
-      - name: CI Upload Linux
-        if: ${{ github.ref_type == 'branch' && matrix.platform == 'ubuntu-latest' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: 'Linux Distributions'
-          path: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/AppImage/*.AppImage
-
-      # TODO: https://tauri.app/v1/guides/building/linux#cross-compiling-tauri-applications-for-arm-based-devices
-      - name: Generate and import certificate
-        if: matrix.platform == 'macos-latest'
-        run: |
-          openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout MyKey.key -out MyCert.crt -subj "/CN=ClockBlocks Self-Signed"
-          openssl pkcs12 -export -out MySigningCert.p12 -inkey MyKey.key -in MyCert.crt -passout pass:${{ secrets.KEYCHAIN_PASSWORD }} -nodes
-          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
-          security import MySigningCert.p12 -k build.keychain -P "${{ secrets.KEYCHAIN_PASSWORD }}" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+      - uses: tauri-apps/tauri-action@v0
         env:
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        if: ${{ github.ref_type == 'tag' }}
-        # if u get Error: Resource not accessible by integration
-        # go to repository Settings => Action => General => Workflow permissions => Switch to Read and Write permisions
-        env:
-          CI: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         with:
-          # tauri-action replaces \_\_VERSION\_\_ with the app version
-          tagName: ${{ github.ref_name }}
-          releaseName: "${{ env.APP_NAME }} v__VERSION__"
-          releaseBody: |
-            ${{needs.changelog.outputs.changelog}}
-            See the assets to download this version and install.
+          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          releaseName: 'App v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: false
-
-      - name: Code Sign app
-        if: matrix.platform == 'macos-latest'
-        run: |
-          codesign --force --options runtime --sign "ClockBlocks Self-Signed" src-tauri/target/release/bundle/macos/ClockBlocks.app
-
-      - name: Notarize app
-        if: matrix.platform == 'macos-latest'
-        run: |
-          xcrun notarytool submit src-tauri/target/release/bundle/macos/ClockBlocks.app --wait --keychain-profile "ClockBlocks Self-Signed"
-          xcrun stapler staple src-tauri/target/release/bundle/macos/ClockBlocks.app
+          args: ${{ matrix.args }}
