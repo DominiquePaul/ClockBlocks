@@ -156,6 +156,19 @@ jobs:
             src-tauri/target/release/bundle/AppImage/*.AppImage
 
       # TODO: https://tauri.app/v1/guides/building/linux#cross-compiling-tauri-applications-for-arm-based-devices
+      - name: Generate and import certificate
+        if: matrix.platform == 'macos-latest'
+        run: |
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout MyKey.key -out MyCert.crt -subj "/CN=ClockBlocks Self-Signed"
+          openssl pkcs12 -export -out MySigningCert.p12 -inkey MyKey.key -in MyCert.crt -nodes
+          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          security import MySigningCert.p12 -k build.keychain -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+        env:
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         if: ${{ github.ref_type == 'tag' }}
