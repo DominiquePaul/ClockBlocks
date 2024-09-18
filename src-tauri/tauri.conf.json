@@ -70,8 +70,14 @@
         "icons/icon.ico"
       ],
       "macOS": {
+        "frameworks": [],
+        "minimumSystemVersion": "",
+        "exceptionDomain": "",
+        "signingIdentity": null,
         "providerShortName": null,
-        "entitlements": null
+        "license": null,
+        "entitlements": "entitlements.plist"
+
       }
     },
     "windows": [
@@ -82,6 +88,12 @@
         "width": 800,
         "height": 600
       }
-    ]
+    ],
+    "updater": {
+      "active": false,
+      "endpoints": [],
+      "dialog": true,
+      "pubkey": ""
+    }
   }
 }

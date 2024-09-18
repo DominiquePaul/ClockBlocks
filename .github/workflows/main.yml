@@ -189,3 +189,14 @@ jobs:
             See the assets to download this version and install.
           releaseDraft: true
           prerelease: false
+
+      - name: Code Sign app
+        if: matrix.platform == 'macos-latest'
+        run: |
+          codesign --force --options runtime --sign "ClockBlocks Self-Signed" src-tauri/target/release/bundle/macos/ClockBlocks.app
+
+      - name: Notarize app
+        if: matrix.platform == 'macos-latest'
+        run: |
+          xcrun notarytool submit src-tauri/target/release/bundle/macos/ClockBlocks.app --wait --keychain-profile "ClockBlocks Self-Signed"
+          xcrun stapler staple src-tauri/target/release/bundle/macos/ClockBlocks.app
