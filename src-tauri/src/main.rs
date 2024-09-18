@@ -27,6 +27,7 @@ use url::Url;
 use oauth2::reqwest::async_http_client;
 use std::sync::{Arc, Mutex};
 use serde_json::json;
+use std::path::PathBuf;
 
 struct AppState {
     pkce_verifier: Mutex<Option<String>>,
@@ -41,9 +42,17 @@ struct AuthToken {
 
 #[tauri::command]
 async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandle) -> Result<String, String> {
+    println!("Starting Google Sign-In process");
+
+    let config_path = app_handle
+        .path_resolver()
+        .resolve_resource("resources/google_client_secret.json")
+        .expect("failed to resolve resource");
+    println!("Config path: {:?}", config_path);
+
     let config: Value = serde_json::from_str(
-        &fs::read_to_string("resources/google_client_secret.json").expect("Failed to read config file")
-    ).expect("Failed to parse JSON");
+        &fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config file: {}", e))?
+    ).map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
     let installed = config["installed"].as_object().expect("Invalid config format");
     let client_id = installed["client_id"].as_str().expect("Client ID not found");
@@ -61,6 +70,7 @@ async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandl
     let (auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("https://www.googleapis.com/auth/spreadsheets".to_string()))
+        .add_scope(Scope::new("https://www.googleapis.com/auth/drive".to_string()))
         .set_pkce_challenge(pkce_challenge)
         .url();
 
@@ -96,14 +106,36 @@ async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandl
         }
     });
 
-    // Open the default browser with the sign-in URL
-    shell::open(&window.shell_scope(), auth_url.to_string(), None)
-        .map_err(|e| format!("Failed to open browser: {}", e.to_string()))?;
+    println!("Opening browser with URL: {}", auth_url);
+    
+    // Try to open the URL using the system's default browser
+    if let Err(e) = shell::open(&app_handle.shell_scope(), auth_url.to_string(), None) {
+        eprintln!("Failed to open browser using shell::open: {}", e);
+        
+        // Fallback: Try to open the URL using the window's API
+        window.emit("open-external", auth_url.to_string())
+            .map_err(|e| format!("Failed to emit open-external event: {}", e))?;
+    }
 
-    // Wait for the code from the callback
+    println!("Waiting for code from callback");
     let code = rx.recv().map_err(|e| format!("Failed to receive code: {}", e))?;
+    println!("Received code: {}", code);
 
     Ok(code)
+}
+
+fn get_data_dir(app_handle: &tauri::AppHandle) -> PathBuf {
+    if cfg!(debug_assertions) {
+        // Development mode
+        app_handle.path_resolver()
+            .app_local_data_dir()
+            .expect("Failed to get app local data directory")
+            .join("dev_data")
+    } else {
+        // Production mode
+        app_data_dir(&app_handle.config())
+            .expect("Failed to get app data directory")
+    }
 }
 
 #[tauri::command]
@@ -118,7 +150,9 @@ async fn save_auth_token(
         refresh_token,
         expiry,
     };
-    let token_path = app_data_dir(&app_handle.config()).unwrap().join("auth_token.json");
+    let data_dir = get_data_dir(&app_handle);
+    fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+    let token_path = data_dir.join("auth_token.json");
     let file = File::create(token_path).map_err(|e| e.to_string())?;
     serde_json::to_writer(file, &auth_token).map_err(|e| e.to_string())?;
     Ok(())
@@ -126,7 +160,8 @@ async fn save_auth_token(
 
 #[tauri::command]
 async fn load_auth_token(app_handle: tauri::AppHandle) -> Result<Option<AuthToken>, String> {
-    let token_path = app_data_dir(&app_handle.config()).unwrap().join("auth_token.json");
+    let data_dir = get_data_dir(&app_handle);
+    let token_path = data_dir.join("auth_token.json");
     if !token_path.exists() {
         return Ok(None);
     }
@@ -150,9 +185,13 @@ async fn check_auth_token(app_handle: tauri::AppHandle) -> Result<bool, String> 
 #[tauri::command]
 async fn exchange_code_for_tokens(_window: tauri::Window, app_handle: tauri::AppHandle, code: String) -> Result<AuthToken, String> {
     println!("Exchanging code for tokens...");
+    let config_path = app_handle
+        .path_resolver()
+        .resolve_resource("resources/google_client_secret.json")
+        .expect("failed to resolve resource");
     let config: Value = serde_json::from_str(
-        &fs::read_to_string("resources/google_client_secret.json").expect("Failed to read config file")
-    ).expect("Failed to parse JSON");
+        &fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config file: {}", e))?
+    ).map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
     let installed = config["installed"].as_object().expect("Invalid config format");
     let client_id = installed["client_id"].as_str().expect("Client ID not found");
@@ -223,9 +262,13 @@ async fn refresh_token(app_handle: tauri::AppHandle) -> Result<AuthToken, String
     let current_token = load_auth_token(app_handle.clone()).await?
         .ok_or("No token found")?;
 
+    let config_path = app_handle
+        .path_resolver()
+        .resolve_resource("resources/google_client_secret.json")
+        .expect("failed to resolve resource");
     let config: Value = serde_json::from_str(
-        &fs::read_to_string("resources/google_client_secret.json").expect("Failed to read config file")
-    ).expect("Failed to parse JSON");
+        &fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config file: {}", e))?
+    ).map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
     let installed = config["installed"].as_object().expect("Invalid config format");
     let client_id = installed["client_id"].as_str().expect("Client ID not found");
@@ -264,13 +307,16 @@ fn is_dev() -> bool {
 
 #[tauri::command]
 async fn save_sheet_id(app_handle: tauri::AppHandle, sheet_id: String) -> Result<(), String> {
-    let path = app_data_dir(&app_handle.config()).unwrap().join("sheet_id.txt");
+    let data_dir = get_data_dir(&app_handle);
+    fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+    let path = data_dir.join("sheet_id.txt");
     fs::write(path, sheet_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn load_sheet_id(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
-    let path = app_data_dir(&app_handle.config()).unwrap().join("sheet_id.txt");
+    let data_dir = get_data_dir(&app_handle);
+    let path = data_dir.join("sheet_id.txt");
     if path.exists() {
         fs::read_to_string(path).map(Some).map_err(|e| e.to_string())
     } else {
@@ -335,6 +381,71 @@ async fn get_or_create_new_sheet(app_handle: tauri::AppHandle, title: String) ->
         .as_str()
         .ok_or("Spreadsheet ID not found in response")?
         .to_string();
+
+    // Rename the default "Sheet1" to "DetailsSessions"
+    let rename_request = json!({
+        "requests": [{
+            "updateSheetProperties": {
+                "properties": {
+                    "sheetId": 0,
+                    "title": "SummaryByDate"
+                },
+                "fields": "title"
+            }
+        }]
+    });
+
+    let rename_response = client
+        .post(&format!(
+            "https://sheets.googleapis.com/v4/spreadsheets/{}:batchUpdate",
+            spreadsheet_id
+        ))
+        .bearer_auth(&auth_token.access_token)
+        .json(&rename_request)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to rename default sheet: {}", e))?;
+
+    if !rename_response.status().is_success() {
+        println!("Failed to rename default sheet: {}", rename_response.status());
+        let error_body = rename_response.text().await.unwrap_or_default();
+        println!("Error details: {}", error_body);
+    } else {
+        println!("Successfully renamed default sheet to SummaryByDate");
+    }
+
+    // Create the other three sheets
+    let other_sheets = ["SummaryBySession", "DetailsSessions", "DetailsSessionEvents"];
+    for sheet_name in other_sheets.iter() {
+        let add_sheet_request = json!({
+            "requests": [{
+                "addSheet": {
+                    "properties": {
+                        "title": sheet_name
+                    }
+                }
+            }]
+        });
+
+        let add_sheet_response = client
+            .post(&format!(
+                "https://sheets.googleapis.com/v4/spreadsheets/{}:batchUpdate",
+                spreadsheet_id
+            ))
+            .bearer_auth(&auth_token.access_token)
+            .json(&add_sheet_request)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to create sheet {}: {}", sheet_name, e))?;
+
+        if !add_sheet_response.status().is_success() {
+            println!("Failed to create sheet {}: {}", sheet_name, add_sheet_response.status());
+            let error_body = add_sheet_response.text().await.unwrap_or_default();
+            println!("Error details: {}", error_body);
+        } else {
+            println!("Successfully created sheet: {}", sheet_name);
+        }
+    }
 
     // Save the new sheet ID
     save_sheet_id(app_handle, spreadsheet_id.clone()).await?;
@@ -453,6 +564,16 @@ fn main() {
                 let window = app.get_window("main").unwrap();
                 window.open_devtools();
             }
+            
+            // Set up a handler for the "open-external" event
+            let handle = app.handle();
+            let handle_clone = handle.clone();
+            handle.listen_global("open-external", move |event| {
+                if let Some(url) = event.payload() {
+                    let _ = shell::open(&handle_clone.shell_scope(), url, None);
+                }
+            });
+
             app.manage(app_state);
             Ok(())
         })

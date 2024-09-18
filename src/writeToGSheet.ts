@@ -25,14 +25,8 @@ export const handleSyncData = async (): Promise<string | undefined> => {
     // Write each table to the sheet
     await invoke('write_data_to_sheet', { 
       sheetId: sheetId, 
-      sheetName: 'DetailsSessions', 
-      data: detailsSessions 
-    });
-
-    await invoke('write_data_to_sheet', { 
-      sheetId: sheetId, 
-      sheetName: 'DetailsSessionEvents', 
-      data: detailsSessionEvents 
+      sheetName: 'SummaryByDate', 
+      data: summaryByDate 
     });
 
     await invoke('write_data_to_sheet', { 
@@ -43,9 +37,16 @@ export const handleSyncData = async (): Promise<string | undefined> => {
 
     await invoke('write_data_to_sheet', { 
       sheetId: sheetId, 
-      sheetName: 'SummaryByDate', 
-      data: summaryByDate 
+      sheetName: 'DetailsSessions', 
+      data: detailsSessions 
     });
+
+    await invoke('write_data_to_sheet', { 
+      sheetId: sheetId, 
+      sheetName: 'DetailsSessionEvents', 
+      data: detailsSessionEvents 
+    });
+
 
     console.log('Data synced successfully');
     return `https://docs.google.com/spreadsheets/d/${sheetId}`;

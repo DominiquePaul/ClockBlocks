@@ -22,6 +22,7 @@ function SettingsPage({
 }) {
 
     const [sheetURL, setSheetURL] = useState<string | undefined>(undefined);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     useEffect(() => {
       getSheetURL().then(setSheetURL);
@@ -91,6 +92,18 @@ function SettingsPage({
       }
     }
 
+    const handleSync = async () => {
+      setIsSyncing(true);
+      try {
+        await handleSyncData();
+        // Update sheetURL after successful sync
+        const updatedSheetURL = await getSheetURL();
+        setSheetURL(updatedSheetURL);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+
     return (
       <div className="flex flex-col items-center p-4 overflow-auto">
   
@@ -136,13 +149,15 @@ function SettingsPage({
             {sheetURL ? (
               <p className="mb-4">Your data is being synced to <a href={sheetURL} target="_blank" rel="noopener noreferrer" className="underline">this Google Sheet</a>.</p>
             ) : (
-              <p className="mb-4">No sync yet, press button</p>
+              <p className="mb-4">No sync yet, press button to initiate.</p>
             )}
             <button
-              onClick={handleSyncData}
+              onClick={handleSync}
               className="p-2 bg-green-500 text-white rounded flex items-center"
+              disabled={isSyncing}
             >
-              <RefreshCw size={16} className="mr-2" /> Sync Data
+              <RefreshCw size={16} className={`mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Syncing...' : 'Sync Data'}
             </button>
           </div>
         )}
