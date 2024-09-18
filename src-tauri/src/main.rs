@@ -28,6 +28,8 @@ use oauth2::reqwest::async_http_client;
 use std::sync::{Arc, Mutex};
 use serde_json::json;
 use std::path::PathBuf;
+use dotenv::dotenv;
+use std::env;
 
 struct AppState {
     pkce_verifier: Mutex<Option<String>>,
@@ -40,27 +42,31 @@ struct AuthToken {
     expiry: u64,
 }
 
+fn get_oauth_config() -> Result<(String, String, String, String), String> {
+    dotenv().ok(); // Load .env file if it exists
+
+    let client_id = env::var("GOOGLE_CLIENT_ID")
+        .map_err(|_| "GOOGLE_CLIENT_ID not set in environment".to_string())?;
+    let client_secret = env::var("GOOGLE_CLIENT_SECRET")
+        .map_err(|_| "GOOGLE_CLIENT_SECRET not set in environment".to_string())?;
+    let auth_uri = env::var("GOOGLE_AUTH_URI")
+        .unwrap_or_else(|_| "https://accounts.google.com/o/oauth2/auth".to_string());
+    let token_uri = env::var("GOOGLE_TOKEN_URI")
+        .unwrap_or_else(|_| "https://oauth2.googleapis.com/token".to_string());
+
+    Ok((client_id, client_secret, auth_uri, token_uri))
+}
+
 #[tauri::command]
 async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandle) -> Result<String, String> {
     println!("Starting Google Sign-In process");
 
-    let config_path = app_handle
-        .path_resolver()
-        .resolve_resource("resources/google_client_secret.json")
-        .expect("failed to resolve resource");
-    println!("Config path: {:?}", config_path);
-
-    let config: Value = serde_json::from_str(
-        &fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config file: {}", e))?
-    ).map_err(|e| format!("Failed to parse JSON: {}", e))?;
-
-    let installed = config["installed"].as_object().expect("Invalid config format");
-    let client_id = installed["client_id"].as_str().expect("Client ID not found");
+    let (client_id, _, auth_uri, _) = get_oauth_config()?;
 
     let client = BasicClient::new(
-        ClientId::new(client_id.to_string()),
+        ClientId::new(client_id),
         None,
-        AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_string()).unwrap(),
+        AuthUrl::new(auth_uri).unwrap(),
         Some(TokenUrl::new("https://oauth2.googleapis.com/token".to_string()).unwrap())
     )
     .set_redirect_uri(RedirectUrl::new("http://127.0.0.1:3010/callback".to_string()).unwrap());
@@ -185,18 +191,8 @@ async fn check_auth_token(app_handle: tauri::AppHandle) -> Result<bool, String> 
 #[tauri::command]
 async fn exchange_code_for_tokens(_window: tauri::Window, app_handle: tauri::AppHandle, code: String) -> Result<AuthToken, String> {
     println!("Exchanging code for tokens...");
-    let config_path = app_handle
-        .path_resolver()
-        .resolve_resource("resources/google_client_secret.json")
-        .expect("failed to resolve resource");
-    let config: Value = serde_json::from_str(
-        &fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config file: {}", e))?
-    ).map_err(|e| format!("Failed to parse JSON: {}", e))?;
-
-    let installed = config["installed"].as_object().expect("Invalid config format");
-    let client_id = installed["client_id"].as_str().expect("Client ID not found");
-    let client_secret = installed["client_secret"].as_str().expect("Client secret not found");
-    let token_uri = installed["token_uri"].as_str().expect("Token URI not found");
+    
+    let (client_id, client_secret, _, token_uri) = get_oauth_config()?;
 
     println!("Client ID: {}", client_id);
     println!("Token URI: {}", token_uri);
@@ -262,23 +258,13 @@ async fn refresh_token(app_handle: tauri::AppHandle) -> Result<AuthToken, String
     let current_token = load_auth_token(app_handle.clone()).await?
         .ok_or("No token found")?;
 
-    let config_path = app_handle
-        .path_resolver()
-        .resolve_resource("resources/google_client_secret.json")
-        .expect("failed to resolve resource");
-    let config: Value = serde_json::from_str(
-        &fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config file: {}", e))?
-    ).map_err(|e| format!("Failed to parse JSON: {}", e))?;
-
-    let installed = config["installed"].as_object().expect("Invalid config format");
-    let client_id = installed["client_id"].as_str().expect("Client ID not found");
-    let client_secret = installed["client_secret"].as_str().expect("Client secret not found");
+    let (client_id, client_secret, auth_uri, token_uri) = get_oauth_config()?;
 
     let client = BasicClient::new(
-        ClientId::new(client_id.to_string()),
-        Some(ClientSecret::new(client_secret.to_string())),
-        AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_string()).unwrap(),
-        Some(TokenUrl::new("https://oauth2.googleapis.com/token".to_string()).unwrap())
+        ClientId::new(client_id),
+        Some(ClientSecret::new(client_secret)),
+        AuthUrl::new(auth_uri).unwrap(),
+        Some(TokenUrl::new(token_uri).unwrap())
     );
 
     let token_result = client
