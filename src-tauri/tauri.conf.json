@@ -59,7 +59,7 @@
       ]
     },
     "bundle": {
-      "resources": ["resources/google_client_secret.json"],
+      "resources": [],
       "active": true,
       "targets": "all",
       "identifier": "com.clockblocks.app",
