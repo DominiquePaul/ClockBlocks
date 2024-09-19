@@ -2,8 +2,9 @@ name: 'publish'
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 # This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
 
@@ -54,17 +55,6 @@ jobs:
 
       - name: install frontend dependencies
         run: pnpm install # change this to npm, pnpm or bun depending on which one you use.
-
-      - name: Ad-hoc sign (macOS)
-        if: matrix.platform == 'macos-latest'
-        run: |
-          echo "Creating ad-hoc signing certificate"
-          security create-keychain -p github_actions build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p github_actions build.keychain
-          security set-keychain-settings -t 3600 -u build.keychain
-          security add-generic-password -A -s "Apple Development" -a "github_actions" -w "github_actions" build.keychain
-          security find-identity -v
 
       - uses: tauri-apps/tauri-action@v0
         env:
