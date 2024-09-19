@@ -1,5 +1,6 @@
 import Database from "tauri-plugin-sql-api";
 import { invoke } from '@tauri-apps/api/tauri';
+import { appDataDir } from '@tauri-apps/api/path';
 
 import { v4 as uuidv4 } from 'uuid';
 import { TimeBox, SessionEvent, Session } from './types';
@@ -40,6 +41,11 @@ export async function maybeInitializeDatabase() {
     console.log('Database connection not established');
     return;
   }
+
+  // Log the full file system path
+  const fullDbPath = await getActualDbPath();
+  console.log('Full database file system path:', fullDbPath);
+
   // Drop existing tables if they exist
   // await db.execute(`
   //     DROP TABLE IF EXISTS sessionEvents;
@@ -285,4 +291,11 @@ export async function getMetadata(name: string): Promise<string | null> {
     console.error('Error getting metadata:', error);
     throw error;
   }
+}
+
+async function getActualDbPath(): Promise<string> {
+  const isDev = await checkDevMode();
+  const dbName = isDev ? 'clockblocks_dev.db' : 'clockblocks.db';
+  const appDataDirPath = await appDataDir();
+  return `${appDataDirPath}${dbName}`;
 }

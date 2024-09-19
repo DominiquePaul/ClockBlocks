@@ -99,63 +99,66 @@ function App() {
     const currentTime = new Date();
     const currentTimeISO = currentTime.toISOString();
 
-    setActiveBox(id);
-
-    setTimeBoxes(prevTimeBoxes =>
-      prevTimeBoxes.map(timeBox =>
-        timeBox.id === id
-          ? { ...timeBox, isActive: true }
-          : { ...timeBox, isActive: false }
-      )
-    );
-    
-    const newSessionEvent: SessionEvent = {
+    const updateTimeBoxes = (activeId: string) => {
+      setTimeBoxes(prevTimeBoxes =>
+        prevTimeBoxes.map(timeBox => ({
+          ...timeBox,
+          isActive: timeBox.id === activeId
+        }))
+      );
+    };
+  
+    const createNewSessionEvent = (timeBoxId: string, startTime: string): SessionEvent => ({
       id: uuidv4(),
-      timeBoxId: id,
+      timeBoxId,
       sessionId: activeSession.id,
-      startDatetime: currentTimeISO,
+      startDatetime: startTime,
       endDatetime: null,
       seconds: 0
+    });
+  
+    const updateSessionEvents = (newEvent: SessionEvent, currentTime: Date): SessionEvent[] => {
+      const lastEvent = sessionEvents[sessionEvents.length - 1];
+      if (activeBox && lastEvent) {
+        const updatedLastEvent = {
+          ...lastEvent,
+          endDatetime: currentTime.toISOString(),
+          seconds: Math.round((currentTime.getTime() - new Date(lastEvent.startDatetime).getTime()) / 1000)
+        };
+        return [...sessionEvents.slice(0, -1), updatedLastEvent, newEvent];
+      }
+      return [...sessionEvents, newEvent];
     };
-
-    let updatedLastEvent: SessionEvent | null = null;
-    const lastEvent = sessionEvents[sessionEvents.length - 1];
-
-    if (lastEvent) {
-      updatedLastEvent = {
-        ...lastEvent,
-        endDatetime: currentTimeISO,
-        seconds: Math.round((currentTime.getTime() - new Date(lastEvent.startDatetime).getTime()) / 1000)
-      };
-    }
-
-    const updatedSessionEvents = [
-      ...sessionEvents.slice(0, -1),
-      ...(updatedLastEvent ? [updatedLastEvent] : []),
-      newSessionEvent
-    ];
-
-    const updatedSession = {
+  
+    const updateSession = (events: SessionEvent[], currentTimeISO: string): Session => ({
       ...activeSession,
       startDatetime: activeSession.startDatetime || currentTimeISO,
-      sessionEvents: updatedSessionEvents
+      sessionEvents: events
+    });
+  
+    const saveToDatabase = (events: SessionEvent[], session: Session) => {
+      const lastEvent = events[events.length - 2]; // The second-to-last event is the one we need to update
+      Promise.all([
+        lastEvent ? addSessionEvent(lastEvent) : Promise.resolve(),
+        upsertSession(session)
+      ]).then(() => {
+        console.log("Session and events updated successfully");
+      }).catch((error) => {
+        console.error("Failed to update session or events:", error);
+      });
     };
+
+    setActiveBox(id);
+    updateTimeBoxes(id);
     
+    const newSessionEvent = createNewSessionEvent(id, currentTimeISO);
+    const updatedSessionEvents = updateSessionEvents(newSessionEvent, currentTime);
+    const updatedSession = updateSession(updatedSessionEvents, currentTimeISO);
     
     setSessionEvents(updatedSessionEvents);
     setActiveSession(updatedSession);
     
-    // Perform database operations
-    Promise.all([
-      updatedLastEvent ? addSessionEvent(updatedLastEvent).then(() => console.log("Updated last event saved:", updatedLastEvent)) : Promise.resolve(),
-      upsertSession(updatedSession).then(() => console.log("Session updated:", updatedSession))
-      // addSessionEvent(newSessionEvent).then(() => console.log("New session event saved:", newSessionEvent))
-    ]).then(() => {
-      console.log("Session and events updated successfully");
-    }).catch((error) => {
-      console.error("Failed to update session or events:", error);
-    });
-    console.log()
+    saveToDatabase(updatedSessionEvents, updatedSession);
   };
 
   const resetAllTimers = () => {
