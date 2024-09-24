@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { SessionEvent, TimeBox } from "../types";
+import { SessionEvent, TimeBox } from "../lib/types";
 
 function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[], timeBoxes: TimeBox[] }) {
     const [chartType, setChartType] = useState<'session' | 'date'>('session');

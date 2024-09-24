@@ -1,6 +1,6 @@
-import Box from './Box';
-import { TimeBox, Session } from "../types";
-import IconButton from './IconButton';
+import Box from '../components/Box';
+import { TimeBox, Session } from "../lib/types";
+import IconButton from '../components/IconButton';
 import { StopCircle } from "lucide-react";
 
 function TimerPage({ boxes, handleTimeBoxClick, formatTime, activeSession, resetAllTimers }: {   boxes: TimeBox[]; handleTimeBoxClick: (id: string) => void; formatTime: (seconds: number) => string; activeSession: Session; resetAllTimers: () => void }) {

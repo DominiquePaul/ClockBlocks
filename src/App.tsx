@@ -1,14 +1,14 @@
 import { invoke } from "@tauri-apps/api/tauri";
 import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from 'uuid';
-import TimerPage from './TimerPage';
-import ChartPage from './ChartPage';
-import SettingsPage from './SettingsPage';
+import TimerPage from './pages/TimerPage';
+import ChartPage from './pages/ChartPage';
+import SettingsPage from './pages/SettingsPage';
 import backgroundImage from "/background.png";
-import NavigationBar from './NavigationBar';
-import { TimeBox, SessionEvent, Session, AuthToken } from "../types";
-import { getTimeBoxes, getSessionEvents, addSessionEvent, upsertSession, maybeInitializeDatabase } from "../dbInteraction";
-import { handleSyncData } from "../writeToGSheet";
+import NavigationBar from './components/NavigationBar';
+import { TimeBox, SessionEvent, Session, AuthToken } from "./lib/types";
+import { getTimeBoxes, getSessionEvents, addSessionEvent, upsertSession, maybeInitializeDatabase } from "./lib/dbInteraction";
+import { handleSyncData } from "./lib/writeToGSheet";
 function App() {
   // State declarations
   const [timeBoxes, setTimeBoxes] = useState<TimeBox[]>([]);
@@ -283,7 +283,7 @@ function App() {
           ...timeBox,
           seconds: totalSeconds,
         };
-      }).filter(box => !box.isHidden)
+      })
     );
   }
 

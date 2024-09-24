@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, PlusCircle, Eye, EyeOff, RefreshCw } from "lucide-react";
-import { TimeBox } from "../types";
-import { renameTimeBox, addTimeBox, deleteTimeBox, toggleVisibilityTimeBox } from "../dbInteraction";
+import { TimeBox } from "../lib/types";
+import { renameTimeBox, addTimeBox, deleteTimeBox, toggleVisibilityTimeBox } from "../lib/dbInteraction";
 import { ask } from '@tauri-apps/api/dialog';
-import GoogleSignInButton from './GoogleSignIn';
+import GoogleSignInButton from '../components/GoogleSignIn';
 import { invoke } from '@tauri-apps/api/tauri'
 
 
