@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 import TimerPage from './pages/TimerPage';
 import ChartPage from './pages/ChartPage';
 import SettingsPage from './pages/SettingsPage';
-import backgroundImage from "/background.png";
 import NavigationBar from './components/NavigationBar';
 import { TimeBox, SessionEvent, Session, AuthToken } from "./lib/types";
 import { getTimeBoxes, getSessionEvents, addSessionEvent, upsertSession, maybeInitializeDatabase } from "./lib/dbInteraction";
@@ -218,9 +217,11 @@ function App() {
 
   // Render
   return (
-    <div className="flex flex-col h-[100vh] bg-cover bg-center pt-3" style={{ backgroundImage: `url(${backgroundImage})` }}>
+    <div className="bg-black h-[100vh]">
+      <div className="flex align-center justify-center flex-col items-center justify-center-[33px] h-full">
         <NavigationBar activePage={activePage} setActivePage={setActivePage} />
         {renderActivePage()}
+      </div>
     </div>
   );
 
