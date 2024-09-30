@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SessionEvent, TimeBox } from "../lib/types";
+import SortingPanel from "../components/ChartSorting";
+import ChartSessionPanel from "../components/ChartSessionPanel";
 
 function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[], timeBoxes: TimeBox[] }) {
     const [chartType, setChartType] = useState<'session' | 'date'>('session');
@@ -54,70 +56,66 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
         }));
       }
     };
+
+    const dummyData: { title: string; time: string; color: string; }[] = [
+      { title: "Code Reading", time: "8h 45m", color: "#77C8FF" },
+      { title: "Break", time: "3h 22m", color: "#FAFF04" },
+      { title: "Palta Labs", time: "1h 12m", color: "#FF6E3D" },
+      { title: "10m", time: "10m", color: "#F448ED" }
+    ];
+
   
     const chartData = prepareChartData();
-    console.log("chartData", chartData);
     const bucketTitles = Array.from(new Set(timeBoxes.map(box => box.name)));
   
     return (
-      <div className="flex flex-col items-center p-4 overflow-auto">
-        <h2 className="text-xl font-bold mb-4">Time Allocation Chart</h2>
-        
-        <div className="mb-4">
-          <label className="mr-2">Chart Type:</label>
-          <select 
-            value={chartType} 
-            onChange={(e) => setChartType(e.target.value as 'session' | 'date')}
-            className="p-2 border rounded"
-          >
-            <option value="session">By Session</option>
-            <option value="date">By Date</option>
-          </select>
+      <div className="flex flex-col items-center p-2 overflow-auto w-full">
+        <div className="flex w-full justify-between items-center mb-4"> 
+          <h1 className="text-2xl font-bold">Time Tracking Chart</h1>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">View by:</span>
+            <button
+              className={`px-3 py-1 rounded ${chartType === 'session' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              onClick={() => setChartType('session')}
+            >
+              Session
+            </button>
+            <button
+              className={`px-3 py-1 rounded ${chartType === 'date' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              onClick={() => setChartType('date')}
+            >
+              Date
+            </button>
+          </div>
         </div>
-  
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData}>
-            <XAxis dataKey="name" />
-            <YAxis tickFormatter={formatTime} />
-            <Tooltip 
-              cursor={{fill: 'transparent'}}
-              formatter={(value: number, name: string) => [formatTime(value), name]}
-              labelFormatter={(label) => `${chartType === 'session' ? 'Session' : 'Date'}: ${label}`}
-            />
-            <Legend />
-            {bucketTitles.map((title, index) => (
-              <Bar key={title} dataKey={title} stackId="a" fill={`hsl(${index * 360 / bucketTitles.length}, 70%, 50%)`} />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-        <h3 className="text-lg font-semibold mt-8 mb-2">Time Allocation Table</h3>
-        <table className="w-full border-collapse border">
-          <thead>
-            <tr>
-              <th className="border p-2">{chartType === 'session' ? 'Session' : 'Date'}</th>
-              <th className="border p-2">Start Date</th>
-              {bucketTitles.map(title => (
-                <th key={title} className="border p-2">{title}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {chartData.map((row, index) => (
-              <tr key={index}>
-                <td className="border p-2">{row.name}</td>
-                <td className="border p-2">
-                  {chartType === 'session' 
-                    ? new Date(row.startDatetime).toLocaleDateString("en-GB")
-                    : row.name
-                  }
-                </td>
-                {bucketTitles.map(title => (
-                  <td key={title} className="border p-2">{formatTime((row as any)[title] || 0)}</td>
+        <div className="flex w-full justify-between items-start"> 
+          <div className="w-2/3 h-[500px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <XAxis dataKey="name" />
+                <YAxis tickFormatter={formatTime} />
+                <Tooltip 
+                  cursor={{fill: 'transparent'}}
+                  formatter={(value: number, name: string) => [formatTime(value), name]}
+                  labelFormatter={(label) => `${chartType === 'session' ? 'Session' : 'Date'}: ${label}`}
+                />
+                <Legend />
+                {bucketTitles.map((title, index) => (
+                  <Bar key={title} dataKey={title} stackId="a" fill={`hsl(${index * 360 / bucketTitles.length}, 70%, 50%)`} />
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex w-1/3 flex-col gap-5 flex-shrink-0">
+            <div className="flex-1">
+              <SortingPanel />
+            </div>
+            <div className="flex-3">
+              <ChartSessionPanel elements={dummyData} />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

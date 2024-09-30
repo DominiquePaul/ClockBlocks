@@ -217,10 +217,48 @@ function App() {
 
   // Render
   return (
-    <div className="bg-black h-[100vh]">
-      <div className="flex align-center justify-center flex-col items-center justify-center-[33px] h-full">
+    <div className="bg-black min-h-screen flex flex-col overflow-hidden">
+      <div className="flex-grow flex flex-col items-center py-6 overflow-auto">
         <NavigationBar activePage={activePage} setActivePage={setActivePage} />
-        {renderActivePage()}
+        <div className="flex flex-col justify-start items-center gap-[10px] w-fit mx-auto bg-[#232323] rounded-xl z-10 min-w-[400px] p-4">
+          {activePage === 'timer' && (
+            <TimerPage 
+              boxes={timeBoxes.filter(box => !box.isHidden && !box.isDeleted)} 
+              handleTimeBoxClick={handleTimeBoxClick} 
+              formatTime={formatTime} 
+            />
+          )}
+          {activePage === 'chart' && (
+            <ChartPage 
+              sessionEvents={sessionEvents} 
+              timeBoxes={timeBoxes.filter(box => !box.isHidden)} 
+            />
+          )}
+          {activePage === 'settings' && (
+            <SettingsPage 
+              timeBoxes={timeBoxes} 
+              setBoxes={setTimeBoxes} 
+              isAuthenticated={isAuthenticated} 
+              handleGoogleSignIn={handleGoogleSignIn}
+              handleSyncData={() => handleSyncData()}
+            />
+          )}
+        </div>
+        {activePage === 'timer' && (
+          <button 
+            onClick={resetAllTimers} 
+            className={`flex flex-row justify-center items-center mx-auto mb-4 rounded-b-xl w-fit px-4 py-2 bg-[#232323] ${activeSession.startDatetime ? 'visible' : 'invisible'}`}
+          >
+            <div className="flex items-start gap-[10px]">
+              <div className="flex w-[35px] h-[35px] p-[9px] justify-center items-center gap-[15px] self-stretch rounded-[8px] bg-white backdrop-blur-[2.3px]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 13 13" fill="none">
+                  <path d="M2.36389 2.36414L10.8341 2.36414L10.8341 10.8343L2.36389 10.8343L2.36389 2.36414Z" fill="black" stroke="black" strokeWidth="2.25871" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <p className="px-2 text-center leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-[15px] font-[493] leading-normal tracking-[-0.3px] text-[#E8E8E8] w-20">{formatTime(activeSession.duration)}</p>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -342,30 +380,6 @@ function App() {
     };
   }
 
-  function renderActivePage() {
-    switch (activePage) {
-      case 'timer':
-        return <TimerPage 
-          boxes={timeBoxes.filter(box => !box.isHidden && !box.isDeleted)} 
-          handleTimeBoxClick={handleTimeBoxClick} 
-          formatTime={formatTime} 
-          activeSession={activeSession} 
-          resetAllTimers={resetAllTimers} 
-        />;
-      case 'chart':
-        return <ChartPage sessionEvents={sessionEvents} timeBoxes={timeBoxes.filter(box => !box.isHidden)} />;
-      case 'settings':
-        return <SettingsPage 
-          timeBoxes={timeBoxes} 
-          setBoxes={setTimeBoxes} 
-          isAuthenticated={isAuthenticated} 
-          handleGoogleSignIn={handleGoogleSignIn}
-          handleSyncData={() => handleSyncData()}
-        />;
-      default:
-        return null;
-    }
-  }
 }
 
 export default App;

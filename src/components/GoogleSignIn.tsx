@@ -5,10 +5,10 @@ const GoogleSignInButton: React.FC<{ onClick: () => void; text?: string }> = ({ 
     <button
       onClick={onClick}
       aria-label={text}
-      className="flex items-center bg-white border border-button-border-light rounded-full p-0.5 pr-4"
+      className="inline-flex items-center bg-white border border-button-border-light rounded-full p-0.5 pr-3"
     >
-      <div className="flex items-center justify-center bg-white w-9 h-9 rounded-full">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5">
+      <div className="flex items-center justify-center bg-white w-8 h-8 rounded-full">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4">
           <title>{text}</title>
           <desc>Google G Logo</desc>
           <path

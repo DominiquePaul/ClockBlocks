@@ -3,14 +3,14 @@ function Box({ name, seconds, isActive, onClick }: { name: string; seconds: stri
   return (
     <div 
       onClick={onClick} 
-      className="w-230 h-230 flex-shrink-0 relative" // Added relative and overflow-hidden
-      >
+      className="w-full min-w-[230px] aspect-square flex-shrink-0 relative"
+    >
       
-      <div className="flex-shrink-0 rounded-[14px] bg-black backdrop-blur-[40px] filter drop-shadow(0px 4px 10px rgba(0, 0, 0, 0.05)) relative p-4 overflow-hidden">
+      <div className="w-full h-full min-h-[230px] flex-shrink-0 rounded-[14px] bg-black backdrop-blur-[40px] filter drop-shadow(0px 4px 10px rgba(0, 0, 0, 0.05)) relative p-4 overflow-hidden">
       
       {isActive && <img src="/src/assets/ellipse_gradient.svg" alt="Ellipse Gradient" className="w-[285px] h-[285px] blur-[60px] absolute top-[160%] left-1/2 transform -translate-x-1/2 -translate-y-[75%] rounded-[285px] bg-[#77C8FF] z-0"/>}  
 
-      <div className={`flex w-[193.16px] h-[185.195px] flex-col justify-between items-center flex-shrink-0 ${isActive ? 'opacity-100' : 'opacity-30'} relative z-10`}>
+      <div className={`flex w-full h-full flex-col justify-between items-center flex-shrink-0 ${isActive ? 'opacity-100' : 'opacity-30'} relative z-10`}>
           
         <div className="flex items-center gap-[26px]">
           

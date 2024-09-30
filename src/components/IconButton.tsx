@@ -1,11 +1,19 @@
-import { ReactElement } from "react";
+import React from 'react';
 
-function IconButton({ icon: Icon, onClick, isActive }: { icon: React.ElementType; onClick?: () => void; isActive: boolean }): ReactElement {
+interface IconButtonProps {
+  onClick: () => void;
+  icon: React.ReactNode;
+}
+
+const IconButton: React.FC<IconButtonProps> = ({ onClick, icon }) => {
   return (
-    <button className={`px-2 h-full flex items-center justify-center `} onClick={onClick}>
-      <Icon strokeWidth={1} className={`h-[20px] ${isActive ? '' : 'text-gray-400'}`} />
+    <button
+      onClick={onClick}
+      className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg border border-gray-600 backdrop-blur-sm text-white hover:bg-gray-700"
+    >
+      {icon}
     </button>
   );
-}
+};
 
 export default IconButton;
