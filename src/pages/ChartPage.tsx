@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SessionEvent, TimeBox } from "../lib/types";
 import SortingPanel from "../components/ChartSorting";
@@ -6,118 +6,256 @@ import ChartSessionPanel from "../components/ChartSessionPanel";
 
 function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[], timeBoxes: TimeBox[] }) {
     const [chartType, setChartType] = useState<'session' | 'date'>('session');
-  
+    const [groupBy, setGroupBy] = useState<'Week' | 'Month' | 'All'>('Week');
+    const [currentPeriod, setCurrentPeriod] = useState<Date>(new Date());
+    const [filteredEvents, setFilteredEvents] = useState<SessionEvent[]>([]);
+
+    useEffect(() => {
+        filterEvents();
+    }, [groupBy, currentPeriod, sessionEvents]);
+
+    const filterEvents = () => {
+        let startDate: Date, endDate: Date;
+        if (groupBy === 'Week') {
+            startDate = getStartOfWeek(currentPeriod);
+            endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 6); // Change this to 6 instead of 7
+        } else if (groupBy === 'Month') {
+            startDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth(), 1);
+            endDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth() + 1, 0);
+        } else {
+            setFilteredEvents(sessionEvents);
+            return;
+        }
+
+        const filtered = sessionEvents.filter(event => {
+            const eventDate = new Date(event.startDatetime);
+            return eventDate >= startDate && eventDate <= endDate; // Change to <= instead of <
+        });
+        setFilteredEvents(filtered);
+    };
+
+    const getStartOfWeek = (date: Date) => {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(d.setDate(diff));
+    };
+
+    const handlePeriodChange = (direction: 'prev' | 'next') => {
+        const newPeriod = new Date(currentPeriod);
+        if (groupBy === 'Week') {
+            newPeriod.setDate(newPeriod.getDate() + (direction === 'next' ? 7 : -7));
+        } else if (groupBy === 'Month') {
+            newPeriod.setMonth(newPeriod.getMonth() + (direction === 'next' ? 1 : -1));
+        }
+        setCurrentPeriod(newPeriod);
+    };
+
+    const formatPeriodDisplay = () => {
+        if (groupBy === 'Week') {
+            const start = getStartOfWeek(currentPeriod);
+            const end = new Date(start);
+            end.setDate(end.getDate() + 6);
+            return `${start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`;
+        } else if (groupBy === 'Month') {
+            return currentPeriod.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        }
+        return 'All Time';
+    };
+
     const formatTime = (seconds: number) => {
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
       const remainingSeconds = seconds % 60;
       return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     };
-  
-    const prepareChartData = () => {
-      const sessions = Array.from(new Set(sessionEvents.map(event => event.sessionId)));
-      if (chartType === 'session') {
-        let chartData: any[] = [];
-        for (const session of sessions) {
-          const sessionData = sessionEvents
-            .filter(event => event.sessionId === session)
-            .reduce((acc, event) => {
-              const timeBox = timeBoxes.find(box => box.id === event.timeBoxId);
-              const boxName = timeBox?.name || 'Unknown';
-              acc[boxName] = (acc[boxName] || 0) + event.seconds;
-              return acc;
-            }, {} as Record<string, number>);
-  
-          chartData.push({
-            name: `Session ${chartData.length + 1}`,
-            startDatetime: sessionEvents.filter(event => event.sessionId === session)
-                                        .reduce((earliest, event) => 
-                                            event.startDatetime < earliest.startDatetime ? event : earliest
-                                        ).startDatetime,
-            ...sessionData
-          });
+
+    const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+    const prepareChartData = (events: SessionEvent[]) => {
+        if (chartType === 'session') {
+            const sessions = Array.from(new Set(events.map(event => event.sessionId)));
+            let chartData: any[] = [];
+            for (const session of sessions) {
+                const sessionData = events
+                    .filter(event => event.sessionId === session)
+                    .reduce((acc, event) => {
+                        const timeBox = timeBoxes.find(box => box.id === event.timeBoxId);
+                        const boxName = timeBox?.name || 'Unknown';
+                        acc[boxName] = (acc[boxName] || 0) + event.seconds;
+                        return acc;
+                    }, {} as Record<string, number>);
+    
+                chartData.push({
+                    name: `${chartData.length + 1}`,
+                    startDatetime: events.filter(event => event.sessionId === session)
+                                            .reduce((earliest, event) => 
+                                                event.startDatetime < earliest.startDatetime ? event : earliest
+                                            ).startDatetime,
+                    ...sessionData
+                });
+            }
+            console.log("chartData", chartData);
+            return chartData;
+        } else {
+            let chartData: any[] = [];
+            let startDate: Date, endDate: Date;
+
+            if (groupBy === 'Week') {
+                startDate = getStartOfWeek(currentPeriod);
+                endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + 6);
+                
+                // Initialize data for all days of the week
+                chartData = weekDays.map((day, index) => ({
+                    name: day,
+                    fullDate: new Date(startDate.getTime() + index * 24 * 60 * 60 * 1000).toLocaleDateString("en-GB"),
+                    ...Object.fromEntries(timeBoxes.map(box => [box.name, 0]))
+                }));
+            } else if (groupBy === 'Month') {
+                startDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth(), 1);
+                endDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth() + 1, 0);
+            } else {
+                // For 'All', use the first and last event dates
+                startDate = new Date(Math.min(...events.map(e => new Date(e.startDatetime).getTime())));
+                endDate = new Date(Math.max(...events.map(e => new Date(e.startDatetime).getTime())));
+            }
+
+            // Fill in actual data
+            events.forEach(event => {
+                const eventDate = new Date(event.startDatetime);
+                if (eventDate >= startDate && eventDate <= endDate) {
+                    const dayIndex = (eventDate.getDay() + 6) % 7; // Adjust to make Monday index 0
+                    const timeBox = timeBoxes.find(box => box.id === event.timeBoxId.toString());
+                    const boxName = timeBox?.name || 'Unknown';
+                    
+                    if (chartData[dayIndex]) {
+                        chartData[dayIndex][boxName] = (chartData[dayIndex][boxName] || 0) + event.seconds;
+                    }
+                }
+            });
+
+            return chartData;
         }
-        console.log("chartData", chartData);
-        return chartData;
-      } else {
-        const dateMap: Record<string, Record<string, number>> = {};
-        sessionEvents.forEach(event => {
-          const date = new Date(event.startDatetime).toLocaleDateString("en-GB");
-          const timeBox = timeBoxes.find(box => box.id === event.timeBoxId.toString());
-          if (!dateMap[date]) {
-            dateMap[date] = {};
-          }
-          const boxName = timeBox?.name || 'Unknown';
-          dateMap[date][boxName] = (dateMap[date][boxName] || 0) + event.seconds;
-        });
-        return Object.entries(dateMap).map(([date, data]) => ({
-          name: date,
-          ...data
-        }));
-      }
     };
 
     const dummyData: { title: string; time: string; color: string; }[] = [
-      { title: "Code Reading", time: "8h 45m", color: "#77C8FF" },
-      { title: "Break", time: "3h 22m", color: "#FAFF04" },
-      { title: "Palta Labs", time: "1h 12m", color: "#FF6E3D" },
-      { title: "10m", time: "10m", color: "#F448ED" }
+        { title: "Code Reading", time: "8h 45m", color: "#77C8FF" },
+        { title: "Break", time: "3h 22m", color: "#FAFF04" },
+        { title: "Palta Labs", time: "1h 12m", color: "#FF6E3D" },
+        { title: "Chess", time: "10m", color: "#F448ED" },
+        { title: "Chess", time: "10m", color: "#F448ED" },
+        { title: "Chess", time: "10m", color: "#F448ED" },
+        { title: "Chess", time: "10m", color: "#F448ED" }
     ];
 
-  
-    const chartData = prepareChartData();
-    const bucketTitles = Array.from(new Set(timeBoxes.map(box => box.name)));
-  
-    return (
-      <div className="flex flex-col items-center p-2 overflow-auto w-full">
-        <div className="flex w-full justify-between items-center mb-4"> 
-          <h1 className="text-2xl font-bold">Time Tracking Chart</h1>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium">View by:</span>
-            <button
-              className={`px-3 py-1 rounded ${chartType === 'session' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-              onClick={() => setChartType('session')}
-            >
-              Session
-            </button>
-            <button
-              className={`px-3 py-1 rounded ${chartType === 'date' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-              onClick={() => setChartType('date')}
-            >
-              Date
-            </button>
-          </div>
-        </div>
-        <div className="flex w-full justify-between items-start"> 
-          <div className="w-2/3 h-[500px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <XAxis dataKey="name" />
-                <YAxis tickFormatter={formatTime} />
-                <Tooltip 
-                  cursor={{fill: 'transparent'}}
-                  formatter={(value: number, name: string) => [formatTime(value), name]}
-                  labelFormatter={(label) => `${chartType === 'session' ? 'Session' : 'Date'}: ${label}`}
-                />
-                <Legend />
-                {bucketTitles.map((title, index) => (
-                  <Bar key={title} dataKey={title} stackId="a" fill={`hsl(${index * 360 / bucketTitles.length}, 70%, 50%)`} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+    const formatXAxisTick = (tick: string) => {
+        if (chartType === 'date' && groupBy === 'Week') {
+            return tick; // Already formatted as M, T, W, T, F, S, S
+        } else if (chartType === 'date' && groupBy === 'Month') {
+            const day = parseInt(tick);
+            return [5, 10, 15, 20, 25, 30].includes(day) ? day.toString() : '';
+        } else if (chartType === 'date' && groupBy === 'All') {
+            // For 'All', we'll parse the date string and format it
+            const [day, month, year] = tick.split('/');
+            const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        } else if (chartType === 'session') {
+            return tick;
+        }
+        return tick;
+    };
 
-          <div className="flex w-1/3 flex-col gap-5 flex-shrink-0">
-            <div className="flex-1">
-              <SortingPanel />
+    const getYAxisTicks = (data: any[]) => {
+        const maxSeconds = Math.max(...data.flatMap(Object.values).filter((v): v is number => typeof v === 'number'));
+        const maxHours = maxSeconds / 3600;
+
+        if (maxHours < 1) {
+            // If less than an hour, use 10-minute intervals
+            return Array.from({ length: 7 }, (_, i) => i * 600);
+        } else {
+            // Use hourly intervals
+            const maxTick = Math.ceil(maxHours) * 3600;
+            return Array.from({ length: maxTick / 3600 + 1 }, (_, i) => i * 3600);
+        }
+    };
+
+    const formatYAxisTick = (seconds: number) => {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        
+        if (hours > 0) {
+            return `${hours}h`;
+        } else {
+            return `${minutes}m`;
+        }
+    };
+
+    const chartData = prepareChartData(filteredEvents);
+    const bucketTitles = Array.from(new Set(timeBoxes.map(box => box.name)));
+    const yAxisTicks = getYAxisTicks(chartData);
+
+    return (
+        <div className="flex flex-col items-center p-2 w-full h-full">
+            <div className="flex w-full h-full justify-between items-stretch gap-4"> 
+                <div className="w-2/3 min-w-[500px]">
+                    <div className="p-0 rounded-[14px] bg-black backdrop-blur-[40px] h-full">
+                        <div className="h-full p-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData}>
+                                    <XAxis 
+                                        dataKey="name"
+                                        tick={{ fill: '#D9D9D9' }}
+                                        tickFormatter={formatXAxisTick}
+                                        interval={0}
+                                    />
+                                    <YAxis 
+                                        tickFormatter={formatYAxisTick} 
+                                        tick={{ fill: '#D9D9D9' }}
+                                        ticks={yAxisTicks}
+                                    />
+                                    <Tooltip 
+                                        cursor={{fill: 'rgba(255, 255, 255, 0.1)'}}
+                                        formatter={(value: number, name: string) => [formatTime(value), name]}
+                                        labelFormatter={(label) => {
+                                            if (chartType === 'date') {
+                                                const dataPoint = chartData.find(item => item.name === label);
+                                                return `${label} - ${dataPoint?.fullDate}`;
+                                            }
+                                            return `${chartType === 'session' ? 'Session: ' : ''}${label}`;
+                                        }}
+                                        contentStyle={{ backgroundColor: '#1E1E1E', border: 'none' }}
+                                        labelStyle={{ color: '#D9D9D9' }}
+                                    />
+                                    <Legend wrapperStyle={{ color: '#D9D9D9' }} />
+                                    {bucketTitles.map((title, index) => (
+                                        <Bar key={title} dataKey={title} stackId="a" fill={`hsl(${index * 360 / bucketTitles.length}, 70%, 50%)`} />
+                                    ))}
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex w-1/3 flex-col gap-4 flex-shrink-0 min-w-[300px] h-full">
+                    <div className="flex-shrink-0">
+                        <SortingPanel 
+                            chartType={chartType} 
+                            setChartType={setChartType}
+                            groupBy={groupBy}
+                            setGroupBy={setGroupBy}
+                            currentPeriod={formatPeriodDisplay()}
+                            onPeriodChange={handlePeriodChange}
+                        />
+                    </div>
+                    <div className="flex-grow overflow-auto">
+                        <ChartSessionPanel elements={dummyData} />
+                    </div>
+                </div>
             </div>
-            <div className="flex-3">
-              <ChartSessionPanel elements={dummyData} />
-            </div>
-          </div>
         </div>
-      </div>
     );
-  }
+}
 
 export default ChartPage;

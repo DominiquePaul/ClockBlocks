@@ -9,7 +9,7 @@ export default function NavigationBar({ activePage, setActivePage }: { activePag
               Time
           </PrimaryButton>
           <PrimaryButton isActive={activePage === 'chart'} onClick={() => setActivePage('chart')}>
-              Charts
+              Stats
           </PrimaryButton>
           <PrimaryButton isActive={activePage === 'settings'} onClick={() => setActivePage('settings')}>
               Settings

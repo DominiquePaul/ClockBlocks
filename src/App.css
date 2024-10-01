@@ -9,3 +9,7 @@
     font-weight: normal;
     font-style: normal;
   }
+
+body, html {
+    background-color: black;
+  }
