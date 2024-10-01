@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SessionEvent, TimeBox } from "../lib/types";
 import SortingPanel from "../components/ChartSorting";
@@ -42,15 +42,41 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
         return new Date(d.setDate(diff));
     };
 
-    const handlePeriodChange = (direction: 'prev' | 'next') => {
+    const isCurrentOrFuturePeriod = useCallback(() => {
+        const now = new Date();
+        if (groupBy === 'Week') {
+            const currentWeekStart = getStartOfWeek(now);
+            const selectedWeekStart = getStartOfWeek(currentPeriod);
+            return selectedWeekStart.getTime() >= currentWeekStart.getTime();
+        } else if (groupBy === 'Month') {
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const selectedYear = currentPeriod.getFullYear();
+            const selectedMonth = currentPeriod.getMonth();
+            return selectedYear > currentYear || (selectedYear === currentYear && selectedMonth >= currentMonth);
+        }
+        return false;
+    }, [groupBy, currentPeriod]);
+
+    const handlePeriodChange = useCallback((direction: 'prev' | 'next') => {
         const newPeriod = new Date(currentPeriod);
         if (groupBy === 'Week') {
             newPeriod.setDate(newPeriod.getDate() + (direction === 'next' ? 7 : -7));
+            // Check if the new period is in the future
+            if (getStartOfWeek(newPeriod).getTime() > getStartOfWeek(new Date()).getTime()) {
+                return; // Don't update if it's a future week
+            }
         } else if (groupBy === 'Month') {
             newPeriod.setMonth(newPeriod.getMonth() + (direction === 'next' ? 1 : -1));
+            // Check if the new period is in the future
+            const now = new Date();
+            if (newPeriod.getFullYear() > now.getFullYear() || 
+                (newPeriod.getFullYear() === now.getFullYear() && newPeriod.getMonth() > now.getMonth())) {
+                return; // Don't update if it's a future month
+            }
         }
         setCurrentPeriod(newPeriod);
-    };
+    }, [groupBy, currentPeriod]);
 
     const formatPeriodDisplay = () => {
         if (groupBy === 'Week') {
@@ -116,22 +142,51 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
             } else if (groupBy === 'Month') {
                 startDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth(), 1);
                 endDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth() + 1, 0);
+                
+                // Initialize data for all days of the month
+                const daysInMonth = endDate.getDate();
+                chartData = Array.from({ length: daysInMonth }, (_, i) => ({
+                    name: (i + 1).toString(),
+                    fullDate: new Date(startDate.getFullYear(), startDate.getMonth(), i + 1).toLocaleDateString("en-GB"),
+                    ...Object.fromEntries(timeBoxes.map(box => [box.name, 0]))
+                }));
             } else {
-                // For 'All', use the first and last event dates
+                // For 'All', create a data point for each day between the first and last event
                 startDate = new Date(Math.min(...events.map(e => new Date(e.startDatetime).getTime())));
                 endDate = new Date(Math.max(...events.map(e => new Date(e.startDatetime).getTime())));
+                
+                const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                
+                chartData = Array.from({ length: daysDiff + 1 }, (_, i) => {
+                    const date = new Date(startDate);
+                    date.setDate(startDate.getDate() + i);
+                    return {
+                        name: date.toISOString().split('T')[0], // Use ISO date string as name
+                        fullDate: date.toLocaleDateString("en-GB"),
+                        ...Object.fromEntries(timeBoxes.map(box => [box.name, 0]))
+                    };
+                });
             }
 
             // Fill in actual data
             events.forEach(event => {
                 const eventDate = new Date(event.startDatetime);
                 if (eventDate >= startDate && eventDate <= endDate) {
-                    const dayIndex = (eventDate.getDay() + 6) % 7; // Adjust to make Monday index 0
+                    let index: number;
+                    if (groupBy === 'Week') {
+                        index = (eventDate.getDay() + 6) % 7; // Adjust to make Monday index 0
+                    } else if (groupBy === 'Month') {
+                        index = eventDate.getDate() - 1; // Arrays are 0-indexed
+                    } else {
+                        // For 'All', find the index based on the date difference
+                        index = Math.floor((eventDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+                    }
+                    
                     const timeBox = timeBoxes.find(box => box.id === event.timeBoxId.toString());
                     const boxName = timeBox?.name || 'Unknown';
                     
-                    if (chartData[dayIndex]) {
-                        chartData[dayIndex][boxName] = (chartData[dayIndex][boxName] || 0) + event.seconds;
+                    if (chartData[index]) {
+                        chartData[index][boxName] = (chartData[index][boxName] || 0) + event.seconds;
                     }
                 }
             });
@@ -151,12 +206,17 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
     ];
 
     const formatXAxisTick = (tick: string) => {
+        if (groupBy === 'All') {
+            // Parse the ISO date string and format it
+            const date = new Date(tick);
+            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        }
         if (chartType === 'date' && groupBy === 'Week') {
             return tick; // Already formatted as M, T, W, T, F, S, S
         } else if (chartType === 'date' && groupBy === 'Month') {
             const day = parseInt(tick);
-            return [5, 10, 15, 20, 25, 30].includes(day) ? day.toString() : '';
-        } else if (chartType === 'date' && groupBy === 'All') {
+            return day === 1 || day % 5 === 0 ? day.toString() : ''; // Show 1, 5, 10, 15, 20, 25, 30
+        } else if (chartType === 'date') {
             // For 'All', we'll parse the date string and format it
             const [day, month, year] = tick.split('/');
             const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
@@ -209,6 +269,7 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
                                         tick={{ fill: '#D9D9D9' }}
                                         tickFormatter={formatXAxisTick}
                                         interval={0}
+                                        hide={groupBy === 'All'} // Hide entire X-axis for 'All' option
                                     />
                                     <YAxis 
                                         tickFormatter={formatYAxisTick} 
@@ -247,6 +308,7 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
                             setGroupBy={setGroupBy}
                             currentPeriod={formatPeriodDisplay()}
                             onPeriodChange={handlePeriodChange}
+                            disableForwardNavigation={isCurrentOrFuturePeriod()}
                         />
                     </div>
                     <div className="flex-grow overflow-auto">

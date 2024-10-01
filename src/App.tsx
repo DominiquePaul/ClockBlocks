@@ -94,6 +94,32 @@ function App() {
   }, []);
   useEffect(startTimer, [activeBox]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+        switch (event.key) {
+          case '1':
+            setActivePage('timer');
+            event.preventDefault();
+            break;
+          case '2':
+            setActivePage('chart');
+            event.preventDefault();
+            break;
+          case '3':
+            setActivePage('settings');
+            event.preventDefault();
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   // Event handlers
   const handleTimeBoxClick = (id: string) => {
     const currentTime = new Date();

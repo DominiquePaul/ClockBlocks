@@ -59,6 +59,7 @@ interface SortingPanelProps {
     setGroupBy: (groupBy: 'Week' | 'Month' | 'All') => void;
     currentPeriod: string;
     onPeriodChange: (direction: 'prev' | 'next') => void;
+    disableForwardNavigation: boolean;
 }
 
 export default function SortingPanel({ 
@@ -67,10 +68,13 @@ export default function SortingPanel({
     groupBy, 
     setGroupBy, 
     currentPeriod, 
-    onPeriodChange 
+    onPeriodChange,
+    disableForwardNavigation
 }: SortingPanelProps) {
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            if (groupBy === 'All') return; // No navigation when 'All' is selected
+
             if (event.key === 'ArrowLeft') {
                 onPeriodChange('prev');
             } else if (event.key === 'ArrowRight') {
@@ -93,7 +97,7 @@ export default function SortingPanel({
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [onPeriodChange, setChartType, setGroupBy]);
+    }, [groupBy, onPeriodChange, setChartType, setGroupBy]);
 
     return (
         <div className="flex w-full p-4 flex-col items-start gap-2 rounded-[14px] bg-black backdrop-blur-[40px]">
@@ -125,11 +129,17 @@ export default function SortingPanel({
                     </div>
                 </div>
 
-                <div className="flex justify-between items-center self-stretch">
-                    <ArrowButton orientation="left" onClick={() => onPeriodChange('prev')} />
-                    <p className="text-white text-center leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-[12px] font-[493] leading-normal">{currentPeriod}</p>
-                    <ArrowButton orientation="right" onClick={() => onPeriodChange('next')} />
-                </div>
+                {groupBy !== 'All' && (
+                    <div className="flex justify-between items-center self-stretch">
+                        <ArrowButton orientation="left" onClick={() => onPeriodChange('prev')} />
+                        <p className="text-white text-center leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-[12px] font-[493] leading-normal">{currentPeriod}</p>
+                        {!disableForwardNavigation ? (
+                            <ArrowButton orientation="right" onClick={() => onPeriodChange('next')} />
+                        ) : (
+                            <div className="w-5 h-5" /> // Placeholder to maintain layout
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     )
