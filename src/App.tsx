@@ -246,9 +246,9 @@ function App() {
   return (
     <div className="bg-black min-h-screen flex flex-col overflow-hidden">
 
-      <div className="flex-grow flex flex-col items-center overflow-auto" style={{ paddingTop: '10vh' }}>
+      <div className="flex-grow flex flex-col w-full items-center overflow-auto mb-8" style={{ paddingTop: '10vh' }}>
         <NavigationBar activePage={activePage} setActivePage={setActivePage} />
-        <div className="flex flex-col justify-start items-center gap-[10px] w-fit mx-auto bg-[#232323] rounded-xl z-10 min-w-[400px] p-4">
+        <div className="flex flex-col justify-start items-center gap-[10px] w-auto mx-auto bg-[#232323] rounded-xl min-w-[400px] p-4">
           {activePage === 'timer' && (
             <TimerPage 
               boxes={timeBoxes.filter(box => !box.isHidden && !box.isDeleted)} 
@@ -263,17 +263,17 @@ function App() {
             />
           )}
           {activePage === 'settings' && (
-            <SettingsPage 
-              timeBoxes={timeBoxes} 
-              setBoxes={setTimeBoxes} 
-              isAuthenticated={isAuthenticated} 
-              handleGoogleSignIn={handleGoogleSignIn}
-              handleSyncData={() => handleSyncData()}
-            />
+              <SettingsPage 
+                timeBoxes={timeBoxes} 
+                setBoxes={setTimeBoxes} 
+                isAuthenticated={isAuthenticated} 
+                handleGoogleSignIn={handleGoogleSignIn}
+                handleSyncData={() => handleSyncData()}
+              />
           )}
         </div>
         {activePage === 'timer' && (
-          <RoundedBox roundedCorners="top" className={`mb-4 ${activeSession.startDatetime ? 'visible' : 'invisible'}`}>
+          <RoundedBox roundedCorners="top" className={`${activeSession.startDatetime ? 'visible' : 'invisible'}`}>
             <button 
               onClick={resetAllTimers} 
               className={`flex flex-row justify-center items-center mx-auto w-fit px-4 py-2 bg-[#232323] rounded-b-xl`}
