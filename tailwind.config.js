@@ -23,6 +23,9 @@ export default {
           'logo-red': '#ea4335',
         },
       },
+      fontSize: {
+        'sm': '12px',
+      },
     },
   },
   plugins: [],

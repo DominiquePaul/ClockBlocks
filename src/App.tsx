@@ -246,7 +246,7 @@ function App() {
   return (
     <div className="bg-black min-h-screen flex flex-col overflow-hidden">
 
-      <div className="flex-grow flex flex-col w-full items-center overflow-auto mb-8" style={{ paddingTop: '10vh' }}>
+      <div className="flex-grow flex flex-col w-full items-center overflow-auto mb-3 pt-min-[20px] pt-[6vh]">
         <NavigationBar activePage={activePage} setActivePage={setActivePage} />
         <div className="flex flex-col justify-start items-center gap-[10px] w-auto mx-auto bg-[#232323] rounded-xl min-w-[400px] p-4">
           {activePage === 'timer' && (
@@ -259,7 +259,7 @@ function App() {
           {activePage === 'chart' && (
             <ChartPage 
               sessionEvents={sessionEvents} 
-              timeBoxes={timeBoxes.filter(box => !box.isHidden)} 
+              timeBoxes={timeBoxes.filter(box => !box.isHidden)}
             />
           )}
           {activePage === 'settings' && (

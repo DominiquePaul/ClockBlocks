@@ -108,9 +108,17 @@ function SettingsPage({
 
     return (
       <div className="flex flex-col lg:flex-row items-stretch p- overflow-auto gap-4 h-full">
-        <div className="flex-1 flex flex-col items-center justify-start bg-black rounded-lg p-4 lg:max-w-[400px] min-w-[400px]">
+        <div className="flex-1 flex flex-col items-center justify-start bg-black rounded-lg p-8 lg:max-w-[400px] min-w-[400px]">
           {/* <h3 className="text-lg font-semibold text-white pb-4">Blocks</h3> */}
-          <div className="w-full overflow-y-auto p-2 py-4">
+          <div className="w-full overflow-y-auto pb-4">
+            <div className="flex flex-col pb-8">
+                  <p className="text-[rgba(217,217,217,0.30)] leading-trim text-edge-cap font-inter text-sm font-normal leading-normal">
+                  Settings
+                  </p>
+                  <p className="text-[#D9D9D9] leading-trim text-edge-cap font-inter text-[28px] font-normal leading-normal">
+                      Time Blocks
+                  </p>
+              </div>
             {timeBoxes.filter(box => !box.isDeleted).map(timeBox => (
               <div key={timeBox.id} className="flex items-center pb-2 w-full gap-2">
                 <div className="flex h-10 gap-2 flex-1 self-stretch p-2 rounded-lg border border-[#4D4D4D] backdrop-blur-sm">

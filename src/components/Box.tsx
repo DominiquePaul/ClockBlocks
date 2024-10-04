@@ -3,10 +3,10 @@ function Box({ name, seconds, isActive, onClick }: { name: string; seconds: stri
   return (
     <div 
       onClick={onClick} 
-      className="w-full min-w-[230px] aspect-square flex-shrink-0 relative"
+      className="w-full min-w-[200px] min-h-[200px] aspect-square flex-shrink-0 relative"
     >
       
-      <div className="w-full h-full min-h-[230px] flex-shrink-0 rounded-[14px] bg-black backdrop-blur-[40px] filter drop-shadow(0px 4px 10px rgba(0, 0, 0, 0.05)) relative p-4 overflow-hidden">
+      <div className="w-full h-full flex-shrink-0 rounded-[14px] bg-black backdrop-blur-[40px] filter drop-shadow(0px 4px 10px rgba(0, 0, 0, 0.05)) relative p-4 overflow-hidden">
       
       {isActive && <img src="/src/assets/ellipse_gradient.svg" alt="Ellipse Gradient" className="w-[285px] h-[285px] blur-[60px] absolute top-[160%] left-1/2 transform -translate-x-1/2 -translate-y-[75%] rounded-[285px] bg-[#77C8FF] z-0"/>}  
 
@@ -25,7 +25,7 @@ function Box({ name, seconds, isActive, onClick }: { name: string; seconds: stri
         </div>
 
         <p className="text-white leading-trim text-edge-cap font-tt-hoves text-[44px] font-[493] leading-normal tracking-[-0.876px]">{seconds}</p>
-        <h2 className="text-white text-center leading-trim text-edge-cap font-tt-hoves text-[22px] font-[493] leading-normal tracking-[-0.438px]">{name}</h2>
+        <h2 className="text-white text-center leading-trim text-edge-cap font-tt-hoves text-[20px] font-[493] leading-normal tracking-[-0.438px]">{name}</h2>
       </div>
       
       </div>

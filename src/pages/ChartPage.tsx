@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { SessionEvent, TimeBox } from "../lib/types";
 import SortingPanel from "../components/ChartSorting";
 import ChartSessionPanel from "../components/ChartSessionPanel";
+import { formatSeconds } from "../lib/utils";
 
 function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[], timeBoxes: TimeBox[] }) {
     const [chartType, setChartType] = useState<'session' | 'date'>('session');
@@ -10,20 +11,35 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
     const [currentPeriod, setCurrentPeriod] = useState<Date>(new Date());
     const [filteredEvents, setFilteredEvents] = useState<SessionEvent[]>([]);
     const [selectedBarData, setSelectedBarData] = useState<{ title: string; time: number; color: string; }[]>([]);
+    const [sessionIndexMap, setSessionIndexMap] = useState<Record<string, number>>({});
 
     useEffect(() => {
         filterEvents();
     }, [groupBy, currentPeriod, sessionEvents]);
+
+    useEffect(() => {
+      // Create a mapping of session IDs to their indices
+      const newSessionIndexMap: Record<string, number> = {};
+      const uniqueSessionIds = Array.from(new Set(sessionEvents.map(event => event.sessionId)));
+      console.log("Session events", sessionEvents);
+      uniqueSessionIds.forEach((sessionId, index) => {
+          newSessionIndexMap[sessionId] = index+1; // Use unique session IDs
+      });
+      setSessionIndexMap(newSessionIndexMap); // Update state with the new mapping
+  }, []);
 
     const filterEvents = () => {
         let startDate: Date, endDate: Date;
         if (groupBy === 'Week') {
             startDate = getStartOfWeek(currentPeriod);
             endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 6); // Change this to 6 instead of 7
+            endDate.setDate(endDate.getDate() + 6); // This correctly sets the end date to 6 days after the start date
+            endDate.setHours(23, 59, 59, 999); // Ensure the end date includes the entire last day of the week
         } else if (groupBy === 'Month') {
             startDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth(), 1);
-            endDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth() + 1, 0);
+            endDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth() + 1, 0); // This is correct for the last day of the month
+            endDate.setHours(23, 59, 59, 999); // Ensure the end date includes the entire last day
+            console.log(startDate, endDate);
         } else {
             setFilteredEvents(sessionEvents);
             return;
@@ -33,7 +49,11 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
             const eventDate = new Date(event.startDatetime);
             return eventDate >= startDate && eventDate <= endDate;
         });
-        setFilteredEvents(filtered);
+
+        // Only update state if the filtered events have changed
+        if (JSON.stringify(filtered) !== JSON.stringify(filteredEvents)) {
+            setFilteredEvents(filtered);
+        }
     };
     const getStartOfWeek = (date: Date) => {
         const d = new Date(date);
@@ -109,7 +129,7 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
         if (chartType === 'session') {
             const sessions = Array.from(new Set(events.map(event => event.sessionId)));
             let chartData: any[] = [];
-            for (const session of sessions) {
+            sessions.forEach((session) => {
                 const sessionData = events
                     .filter(event => event.sessionId === session)
                     .reduce((acc, event) => {
@@ -120,14 +140,15 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
                     }, {} as Record<string, number>);
     
                 chartData.push({
-                    name: `${chartData.length + 1}`,
+                    name: `#${sessionIndexMap[session]}`,
+                    sessionId: session,
                     startDatetime: events.filter(event => event.sessionId === session)
                                           .reduce((earliest, event) => 
                                               event.startDatetime < earliest.startDatetime ? event : earliest
                                             ).startDatetime,
                     ...sessionData
                 });
-            }
+            });
             console.log("chartData", chartData);
             return chartData;
         } else {
@@ -211,26 +232,24 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
     //     { title: "Chess", time: 100, color: "#F448ED" }
     // ];
 
-    const formatXAxisTick = (tick: string) => {
-        if (groupBy === 'All') {
-            // Parse the ISO date string and format it
-            const date = new Date(tick);
-            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-        }
-        if (chartType === 'date' && groupBy === 'Week') {
-            return tick; // Already formatted as M, T, W, T, F, S, S
-        } else if (chartType === 'date' && groupBy === 'Month') {
-            const day = parseInt(tick);
-            return day === 1 || day % 5 === 0 ? day.toString() : ''; // Show 1, 5, 10, 15, 20, 25, 30
-        } else if (chartType === 'date') {
-            // For 'All', we'll parse the date string and format it
-            const [day, month, year] = tick.split('/');
-            const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    const formatXAxisTick = (tick: string, index: number) => {
+        if (chartType === "date") {
+            if (groupBy === 'Week') {
+                return tick; // Already formatted as M, T, W, T, F, S, S
+            } else if (groupBy === 'Month') {
+                const day = parseInt(tick);
+                return day === 1 || day % 5 === 0 ? day.toString() : ''; // Show 1, 5, 10, 15, 20, 25, 30
+            } else {
+                return tick;
+            }
         } else if (chartType === 'session') {
-            return tick;
+            if (index === 0 || index === chartData.length - 1) {
+                return tick; // Show only the first and last item
+            } else {
+                return ''; // Hide other ticks
+            }
         }
-        return tick;
+        return ''; // Ensure a string is always returned
     };
 
     const getYAxisTicks = (data: any[]) => {
@@ -241,9 +260,10 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
             // If less than an hour, use 10-minute intervals
             return Array.from({ length: 7 }, (_, i) => i * 600);
         } else {
-            // Use hourly intervals
-            const maxTick = Math.ceil(maxHours) * 3600;
-            return Array.from({ length: maxTick / 3600 + 1 }, (_, i) => i * 3600);
+            // Use hourly intervals, extending beyond 8 hours if necessary
+            const baseHours = Math.ceil(maxHours / 2) * 2; // Round up to the nearest even number of hours
+            const maxTick = Math.max(8, baseHours) * 3600; // Ensure at least 8 hours, but extend if needed
+            return Array.from({ length: maxTick / 7200 + 1 }, (_, i) => i * 7200); // Increment by 2 hours (7200 seconds)
         }
     };
 
@@ -292,50 +312,149 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
         }
     };
 
+    const formatTooltipDate = (dateString: string | undefined) => {
+        if (!dateString) return 'Invalid date';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Invalid date';
+        return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+    };
+
     return (
         <div className="flex flex-col items-center h-full min-w-[722px] max-w-[1200px] w-[90vw]">
             <div className="flex justify-between items-stretch gap-4 h-[70vh] w-full"> 
                 <div className="w-2/3">
-                    <div className="p-0 h-full rounded-[14px] bg-black backdrop-blur-[40px]">
-                        <div className="h-full p-4">
+                    <div className="p-8 h-full rounded-[14px] bg-black backdrop-blur-[40px] flex flex-col">
+                        <div className="flex flex-col mb-4">
+                            <p className="text-[rgba(217,217,217,0.30)] leading-trim text-edge-cap font-inter text-sm font-normal leading-normal">
+                                {(() => {
+                                    const start = getStartOfWeek(currentPeriod);
+                                    const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+                                    const startString = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                                    const endString = end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                                    
+                                    if (start.getFullYear() === end.getFullYear()) {
+                                        if (start.getMonth() === end.getMonth()) {
+                                            return `${start.toLocaleDateString('en-GB', { day: 'numeric' })} - ${endString}`;
+                                        }
+                                        return `${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${endString}`;
+                                    }
+                                    return `${startString} - ${endString}`;
+                                })()}
+                            </p>
+                            <p className="text-[#D9D9D9] leading-trim text-edge-cap font-inter text-[28px] font-normal leading-normal">
+                                Total time: {formatSeconds(filteredEvents.reduce((total, event) => total + event.seconds, 0))}
+                            </p>
+                        </div>
+                        <div className="flex-grow">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart 
                                     data={chartData} 
                                     onClick={handleChartClick}
+                                    margin={{ top: 20, right: 10, left: -20, bottom: 0 }}
                                 >
                                     <XAxis 
                                         dataKey="name"
-                                        tick={{ fill: '#D9D9D9' }}
-                                        tickFormatter={formatXAxisTick}
+                                        tick={{ fill: '#5E5E5E', fontSize: 10 }}
+                                        tickFormatter={(value, index) => formatXAxisTick(value, index)} // Removed additionalArg
                                         interval={0}
-                                        hide={groupBy === 'All'} // Hide entire X-axis for 'All' option
+                                        axisLine={false}
+                                        tickLine={false}
                                     />
                                     <YAxis 
                                         tickFormatter={formatYAxisTick} 
-                                        tick={{ fill: '#D9D9D9' }}
+                                        tick={{ fill: '#5E5E5E', fontSize: 10 }}
                                         ticks={yAxisTicks}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        domain={[0, 'dataMax']}
+                                        width={50}
                                     />
                                     <Tooltip 
-                                        cursor={{fill: 'rgba(255, 255, 255, 0.1)'}}
-                                        formatter={(value: number, name: string) => [formatTime(value), name]}
-                                        labelFormatter={(label) => {
-                                            if (chartType === 'date') {
-                                                const dataPoint = chartData.find(item => item.name === label);
-                                                return `${label} - ${dataPoint?.fullDate}`;
+                                        cursor={false}
+                                        content={({ active, payload, label }) => {
+                                            if (active && payload) {
+                                                const sessionData = payload[0]?.payload || {};
+                                                const hasData = payload.some(entry => entry?.value ?? 0 > 0);
+                                                
+                                                let displayDate;
+                                                let sessionDate;
+                                                if (chartType === 'date') {
+                                                    if (groupBy === 'Week') {
+                                                        // For week view, construct the date from the label (day of week)
+                                                        const weekStart = getStartOfWeek(currentPeriod);
+                                                        const dayIndex = weekDays.indexOf(label);
+                                                        if (dayIndex !== -1) {
+                                                            const date = new Date(weekStart);
+                                                            date.setDate(date.getDate() + dayIndex);
+                                                            displayDate = formatTooltipDate(date.toISOString());
+                                                            sessionDate = date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                                                        } else {
+                                                            displayDate = 'Invalid date';
+                                                            sessionDate = 'Invalid date';
+                                                        }
+                                                    } else {
+                                                        // For month and all views
+                                                        displayDate = formatTooltipDate(sessionData.fullDate);
+                                                        sessionDate = new Date(sessionData.fullDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                                                    }
+                                                } else {
+                                                    // For session view
+                                                    displayDate = `Session ${sessionData.name}` || label;
+                                                    sessionDate = new Date(sessionData.startDatetime).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                                                }
+
+                                                return (
+                                                    <div className="bg-[#1E1E1E] p-2 rounded-lg text-[#D9D9D9] text-xs">
+                                                        <p className="font-bold mb-1">{displayDate}</p>
+                                                        <p className="mb-1">{sessionDate}</p>
+                                                        {hasData ? (
+                                                            payload.map((entry: any, index: number) => (
+                                                                (entry?.value ?? 0) > 0 && (
+                                                                    <div key={index} className="flex items-center">
+                                                                        <div 
+                                                                            className="w-3 h-3 rounded-full mr-2" 
+                                                                            style={{ backgroundColor: (entry.color ?? 'defaultColor') }}></div>
+                                                                        <p>
+                                                                            {entry.name}: {formatTime(entry.value)}
+                                                                        </p>
+                                                                    </div>
+                                                                )
+                                                            ))
+                                                        ) : (
+                                                            <p>No data for this day</p>
+                                                        )}
+                                                    </div>
+                                                );
                                             }
-                                            return `${chartType === 'session' ? 'Session: ' : ''}${label}`;
+                                            return null;
                                         }}
-                                        contentStyle={{ backgroundColor: '#1E1E1E', border: 'none' }}
-                                        labelStyle={{ color: '#D9D9D9' }}
                                     />
-                                    <Legend wrapperStyle={{ color: '#D9D9D9' }} />
+                                    <Legend 
+                                        wrapperStyle={{ 
+                                            color: '#D9D9D9', 
+                                            fontSize: '12px', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'space-around',
+                                            width: '100%',
+                                        }} 
+                                        iconType="circle"
+                                        iconSize={8}
+                                    />
+                                      {yAxisTicks.map((tick) => (
+                                          <ReferenceLine
+                                              key={tick}
+                                              y={tick}
+                                              stroke="#5E5E5E"
+                                              strokeWidth={0.5}
+                                          />
+                                      ))}
                                     {bucketTitles.map((title, index) => (
                                         <Bar 
                                             key={title} 
                                             dataKey={title} 
                                             stackId="a" 
                                             fill={`hsl(${index * 360 / bucketTitles.length}, 70%, 50%)`}
-                                            // Remove the onClick prop from here
                                         />
                                     ))}
                                 </BarChart>
