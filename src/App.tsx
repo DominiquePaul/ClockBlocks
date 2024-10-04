@@ -9,12 +9,15 @@ import { TimeBox, SessionEvent, Session, AuthToken } from "./lib/types";
 import { getTimeBoxes, getSessionEvents, addSessionEvent, upsertSession, maybeInitializeDatabase } from "./lib/dbInteraction";
 import { handleSyncData } from "./lib/writeToGSheet";
 import RoundedBox from "./components/RoundedBox";
-function App() {
+import { SessionProvider, useSession } from './context/SessionContext';
+
+function AppContent() {
+  const { sessionEvents, setSessionEvents } = useSession();
+
   // State declarations
   const [timeBoxes, setTimeBoxes] = useState<TimeBox[]>([]);
   const [activeBox, setActiveBox] = useState<string | null>(null);
   const [activePage, setActivePage] = useState('timer');
-  const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([]);
   const [activeSession, setActiveSession] = useState<Session>(createNewSession());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -28,7 +31,6 @@ function App() {
     const handleAuthResponse = (event: MessageEvent) => {
       if (event.origin === 'http://localhost:3010' && event.data.type === 'GOOGLE_SIGN_IN_SUCCESS') {
         setIsAuthenticated(true);
-        // You might want to save the token here as well
         invoke('save_auth_token', { 
           accessToken: event.data.accessToken, 
           refreshToken: event.data.refreshToken, 
@@ -57,7 +59,6 @@ function App() {
       const code: string = await invoke('start_google_sign_in');
       console.log('Received authorization code:', code);
       
-      // Add a small delay
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       console.log('Exchanging code for tokens...');
@@ -65,7 +66,6 @@ function App() {
       console.log('Tokens:', tokens);
       setIsAuthenticated(true);
 
-      // Update this line to pass the correct parameters
       await invoke('save_auth_token', { 
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
@@ -74,19 +74,9 @@ function App() {
       return true;
     } catch (error) {
       console.error('Google Sign-In error:', error);
-      // Add more detailed error logging
-      if (typeof error === 'string') {
-        console.error('Error details:', error);
-      } else if (error instanceof Error) {
-        console.error('Error name:', error.name);
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
-      }
       return false;
     }
   };
-
-  
 
   // Effects
   useEffect(() => {
@@ -133,7 +123,7 @@ function App() {
         }))
       );
     };
-  
+
     const createNewSessionEvent = (timeBoxId: string, startTime: string): SessionEvent => ({
       id: uuidv4(),
       timeBoxId,
@@ -142,8 +132,8 @@ function App() {
       endDatetime: null,
       seconds: 0
     });
-  
-    const updateSessionEvents = (newEvent: SessionEvent, currentTime: Date): SessionEvent[] => {
+
+    const updateSessionEventsOnBoxClick = (newEvent: SessionEvent, currentTime: Date): SessionEvent[] => {
       const lastEvent = sessionEvents[sessionEvents.length - 1];
       if (activeBox && lastEvent) {
         const updatedLastEvent = {
@@ -155,13 +145,13 @@ function App() {
       }
       return [...sessionEvents, newEvent];
     };
-  
+
     const updateSession = (events: SessionEvent[], currentTimeISO: string): Session => ({
       ...activeSession,
       startDatetime: activeSession.startDatetime || currentTimeISO,
       sessionEvents: events
     });
-  
+
     const saveToDatabase = (events: SessionEvent[], session: Session) => {
       const lastEvent = events[events.length - 2]; // The second-to-last event is the one we need to update
       Promise.all([
@@ -178,7 +168,7 @@ function App() {
     updateTimeBoxes(id);
     
     const newSessionEvent = createNewSessionEvent(id, currentTimeISO);
-    const updatedSessionEvents = updateSessionEvents(newSessionEvent, currentTime);
+    const updatedSessionEvents = updateSessionEventsOnBoxClick(newSessionEvent, currentTime);
     const updatedSession = updateSession(updatedSessionEvents, currentTimeISO);
     
     setSessionEvents(updatedSessionEvents);
@@ -220,7 +210,6 @@ function App() {
       sessionEvents: updatedSessionEvents
     };
 
-    
     // Persist updated session event to disk
     const lastUpdatedEvent = updatedSessionEvents[updatedSessionEvents.length - 1];
     addSessionEvent(lastUpdatedEvent)
@@ -245,7 +234,6 @@ function App() {
   // Render
   return (
     <div className="bg-black min-h-screen flex flex-col overflow-hidden">
-
       <div className="flex-grow flex flex-col w-full items-center overflow-auto mb-3 pt-min-[20px] pt-[6vh]">
         <NavigationBar activePage={activePage} setActivePage={setActivePage} />
         <div className="flex flex-col justify-start items-center gap-[10px] w-auto mx-auto bg-[#232323] rounded-xl min-w-[400px] p-4">
@@ -258,7 +246,6 @@ function App() {
           )}
           {activePage === 'chart' && (
             <ChartPage 
-              sessionEvents={sessionEvents} 
               timeBoxes={timeBoxes.filter(box => !box.isHidden)}
             />
           )}
@@ -333,7 +320,7 @@ function App() {
   function updateTimers() {
     const currentTime = new Date();
     updateTimeBoxes(currentTime);
-    updateSessionEvents(currentTime);
+    updateOngoingSessionEvent(currentTime);
     updateActiveSession(currentTime);
   }
 
@@ -356,7 +343,7 @@ function App() {
     );
   }
 
-  function updateSessionEvents(currentTime: Date) {
+  function updateOngoingSessionEvent(currentTime: Date) {
     setSessionEvents(prevEvents => {
       const updatedEvents = [...prevEvents];
       const lastEvent = updatedEvents[updatedEvents.length - 1];
@@ -409,7 +396,14 @@ function App() {
       duration: 0
     };
   }
+}
 
+function App() {
+  return (
+    <SessionProvider>
+      <AppContent />
+    </SessionProvider>
+  );
 }
 
 export default App;

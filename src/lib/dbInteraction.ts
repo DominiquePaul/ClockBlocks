@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { TimeBox, SessionEvent, Session } from './types';
 
 let cachedDevMode: boolean | null = null;
+let dbInstance: Database | null = null;
 
 async function checkDevMode(): Promise<boolean> {
   if (cachedDevMode === null) {
@@ -15,18 +16,19 @@ async function checkDevMode(): Promise<boolean> {
 }
 
 async function getDatabase(): Promise<Database> {
+  if (dbInstance) return dbInstance;
+
   const isDev = await checkDevMode();
   const dbName = isDev ? 'clockblocks_dev.db' : 'clockblocks.db';
   const dbPath = `sqlite:${dbName}`;
 
-  let db: Database | null = null;
   try {
-    db = await Database.load(dbPath);
+    dbInstance = await Database.load(dbPath);
+    return dbInstance;
   } catch (error) {
     console.error('Error setting up database:', error);
     throw error;
   }
-  return db;
 }
 
 // Utility function to check dev mode elsewhere in your app
@@ -150,16 +152,40 @@ export async function maybeInitializeDatabase() {
   }
 }
 
-// Example functions for interacting with the database
-export async function addSessionEvent(sessionEvent: Omit<SessionEvent, 'id'>): Promise<void> {
+// Modify the startTransaction function
+export async function startTransaction(): Promise<Database> {
   const db = await getDatabase();
+  if (!db) throw new Error('Database not available');
+  
+  await db.execute('BEGIN TRANSACTION');
+  return db;
+}
+
+// Add these new functions
+export async function commitTransaction(db: Database): Promise<void> {
+  await db.execute('COMMIT');
+}
+
+export async function rollbackTransaction(db: Database): Promise<void> {
+  await db.execute('ROLLBACK');
+}
+
+// Example functions for interacting with the database
+export async function addSessionEvent(sessionEvent: Omit<SessionEvent, 'id'>, transaction?: Database): Promise<void> {
+  const db = transaction || await getDatabase();
+  if (!db) throw new Error('Database not available');
+
   try {
     await db.execute(
       'INSERT INTO sessionEvents (id, timeBoxId, sessionId, startDatetime, endDatetime, seconds) VALUES ($1, $2, $3, $4, $5, $6)',
       [uuidv4(), sessionEvent.timeBoxId, sessionEvent.sessionId, sessionEvent.startDatetime, sessionEvent.endDatetime, sessionEvent.seconds]
     );
+
+    // Update session duration
+    const duration = await calculateSessionDuration(sessionEvent.sessionId, db);
+    await updateSessionDuration(sessionEvent.sessionId, duration, db);
   } finally {
-    await db.close();
+    if (!transaction) await db.close();
   }
 }
 
@@ -298,4 +324,89 @@ async function getActualDbPath(): Promise<string> {
   const dbName = isDev ? 'clockblocks_dev.db' : 'clockblocks.db';
   const appDataDirPath = await appDataDir();
   return `${appDataDirPath}${dbName}`;
+}
+
+// Function to update session events
+export async function updateSessionEvent(event: SessionEvent, transaction?: Database): Promise<void> {
+  const db = transaction || await getDatabase();
+  if (!db) throw new Error('Database not available');
+
+  try {
+    await db.execute(`
+      UPDATE sessionEvents 
+      SET timeBoxId = $1, startDatetime = $2, endDatetime = $3, seconds = $4 
+      WHERE id = $5
+    `, [event.timeBoxId, event.startDatetime, event.endDatetime, event.seconds, event.id]);
+  } finally {
+    if (!transaction) await db.close();
+  }
+}
+
+
+
+// Function to delete session events
+export async function deleteSessionEvent(id: string, transaction?: Database): Promise<void> {
+  const db = transaction || await getDatabase();
+  if (!db) throw new Error('Database not available');
+
+  try {
+    const event = await db.select<SessionEvent>('SELECT sessionId FROM sessionEvents WHERE id = $1', [id]);
+    const sessionId = event.sessionId;
+
+    await db.execute('DELETE FROM sessionEvents WHERE id = $1', [id]);
+
+    // Update session duration
+    const duration = await calculateSessionDuration(sessionId, db);
+    await updateSessionDuration(sessionId, duration, db);
+  } finally {
+    if (!transaction) await db.close();
+  }
+}
+
+// Function to calculate the total duration of a session based on its events
+async function calculateSessionDuration(sessionId: string, db?: Database): Promise<number> {
+  const connection = db || await getDatabase();
+  if (!connection) throw new Error('Database not available');
+
+  const events = await connection.select<SessionEvent[]>(`
+    SELECT startDatetime, endDatetime FROM sessionEvents WHERE sessionId = $1
+  `, [sessionId]);
+
+  let totalDuration = 0;
+
+  events.forEach(event => {
+    const start = new Date(event.startDatetime).getTime();
+    const end = event.endDatetime ? new Date(event.endDatetime).getTime() : new Date().getTime();
+    if (!event.endDatetime) {
+        console.log('End datetime not available, using current date instead.');
+    }
+    if (!isNaN(start) && !isNaN(end)) {
+      totalDuration += (end - start) / 1000; // Convert milliseconds to seconds
+    }
+  });
+
+  return totalDuration;
+}
+
+// Function to update the duration of a session
+async function updateSessionDuration(sessionId: string, duration: number, db?: Database): Promise<void> {
+  const connection = db || await getDatabase();
+  if (!connection) throw new Error('Database not available');
+
+  try {
+    await connection.execute('UPDATE sessions SET duration = $1 WHERE id = $2', [duration, sessionId]);
+  } catch (error) {
+    console.error('Error updating session duration:', error);
+    throw error;
+  } finally {
+    if (!db) await connection.close();
+  }
+}
+
+// Add a function to close the database connection when needed
+export async function closeDatabase(): Promise<void> {
+  if (dbInstance) {
+    await dbInstance.close();
+    dbInstance = null;
+  }
 }

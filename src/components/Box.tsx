@@ -3,7 +3,7 @@ function Box({ name, seconds, isActive, onClick }: { name: string; seconds: stri
   return (
     <div 
       onClick={onClick} 
-      className="w-full min-w-[200px] min-h-[200px] aspect-square flex-shrink-0 relative"
+      className="w-full min-w-[200px] min-h-[200px] aspect-square flex-shrink-0 relative select-none" // Added select-none to prevent text selection
     >
       
       <div className="w-full h-full flex-shrink-0 rounded-[14px] bg-black backdrop-blur-[40px] filter drop-shadow(0px 4px 10px rgba(0, 0, 0, 0.05)) relative p-4 overflow-hidden">

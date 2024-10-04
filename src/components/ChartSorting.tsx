@@ -70,8 +70,12 @@ export default function SortingPanel({
                 <div className="flex justify-between items-center self-stretch">
                     <p className="text-[#D9D9D9] leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-[14px] font-normal leading-normal">Group by</p>
                     <Dropdown
-                        options={['Week', 'Month', 'All']}
-                        value={groupBy}
+                        options={[
+                            { id: 'Week', name: 'Week' },
+                            { id: 'Month', name: 'Month' },
+                            { id: 'All', name: 'All' }
+                        ]}
+                        value={groupBy} // Ensure groupBy is the id of the selected option
                         onChange={(value) => setGroupBy(value as 'Week' | 'Month' | 'All')}
                         textSize="text-sm"
                     />

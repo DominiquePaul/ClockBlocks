@@ -34,9 +34,9 @@ function BarGroup({ title, timeString, barLength, color }: { title: string, time
     )
 }
 
-export default function ChartSessionPanel({ elements }: { elements: { title: string, time: number, color: string }[] }) {
+export default function ChartSessionPanel({ elements }: { elements: { barData: { title: string, time: number, color: string }[], sessionId: string, sessionStart: string, sessionNumber: string } }) {
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const maxBarLength = Math.max(...elements.map(element => element.time));
+    const maxBarLength = Math.max(...elements.barData.map(element => element.time));
 
     const setOpenModal = (open: boolean) => {
         setIsModalOpen(open)
@@ -48,12 +48,12 @@ export default function ChartSessionPanel({ elements }: { elements: { title: str
                 <div className="flex flex-col w-full items-start gap-1">
                     <div className="flex justify-between items-center self-stretch pb-4">
                         <h2 className="text-white leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-14px font-normal leading-normal">Time Block Split</h2>
-                        <SecondaryButton text="Edit Session" onClick={() => setOpenModal(true)} />
+                        {elements.sessionId && <SecondaryButton text="Edit Session" onClick={() => setOpenModal(true)} />}
                     </div>
-                    {elements.map((element, index) => (
+                    {elements.barData.map((element, index) => (
                         <div key={index} className="flex flex-col items-start gap-1 self-stretch">
                             <BarGroup title={element.title} timeString={formatSeconds(element.time)} barLength={element.time/maxBarLength} color={element.color} />
-                            {index < elements.length - 1 && <Divider />}
+                            {index < elements.barData.length - 1 && <Divider />}
                         </div>
                     ))}
                 </div>
@@ -62,7 +62,7 @@ export default function ChartSessionPanel({ elements }: { elements: { title: str
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onClick={() => setOpenModal(false)}></div>
                     <div className="z-10">
-                        <EditModal onClose={() => setOpenModal(false)} />
+                        <EditModal onClose={() => setOpenModal(false)} sessionId={elements.sessionId} sessionStart={elements.sessionStart} sessionNumber={elements.sessionNumber} />
                     </div>
                 </div>
             )}

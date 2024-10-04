@@ -1,131 +1,33 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { SessionEvent, TimeBox } from "../lib/types";
 import SortingPanel from "../components/ChartSorting";
 import ChartSessionPanel from "../components/ChartSessionPanel";
 import { formatSeconds } from "../lib/utils";
+import { useSession } from '../context/SessionContext';
 
-function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[], timeBoxes: TimeBox[] }) {
-    const [chartType, setChartType] = useState<'session' | 'date'>('session');
+function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
+    const { sessionEvents } = useSession(); // Use the sessionEvents from context
+    const [chartType, setChartType] = useState<'session' | 'date'>('date');
     const [groupBy, setGroupBy] = useState<'Week' | 'Month' | 'All'>('Week');
     const [currentPeriod, setCurrentPeriod] = useState<Date>(new Date());
     const [filteredEvents, setFilteredEvents] = useState<SessionEvent[]>([]);
-    const [selectedBarData, setSelectedBarData] = useState<{ title: string; time: number; color: string; }[]>([]);
+    const [selectedBarData, setSelectedBarData] = useState<{ barData: { title: string; time: number; color: string; }[], sessionId: string, sessionStart: string, sessionNumber: string }>({ barData: [], sessionId: '', sessionStart: '', sessionNumber: '' });
     const [sessionIndexMap, setSessionIndexMap] = useState<Record<string, number>>({});
 
-    useEffect(() => {
-        filterEvents();
-    }, [groupBy, currentPeriod, sessionEvents]);
-
-    useEffect(() => {
-      // Create a mapping of session IDs to their indices
-      const newSessionIndexMap: Record<string, number> = {};
-      const uniqueSessionIds = Array.from(new Set(sessionEvents.map(event => event.sessionId)));
-      console.log("Session events", sessionEvents);
-      uniqueSessionIds.forEach((sessionId, index) => {
-          newSessionIndexMap[sessionId] = index+1; // Use unique session IDs
-      });
-      setSessionIndexMap(newSessionIndexMap); // Update state with the new mapping
-  }, []);
-
-    const filterEvents = () => {
-        let startDate: Date, endDate: Date;
-        if (groupBy === 'Week') {
-            startDate = getStartOfWeek(currentPeriod);
-            endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 6); // This correctly sets the end date to 6 days after the start date
-            endDate.setHours(23, 59, 59, 999); // Ensure the end date includes the entire last day of the week
-        } else if (groupBy === 'Month') {
-            startDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth(), 1);
-            endDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth() + 1, 0); // This is correct for the last day of the month
-            endDate.setHours(23, 59, 59, 999); // Ensure the end date includes the entire last day
-            console.log(startDate, endDate);
-        } else {
-            setFilteredEvents(sessionEvents);
-            return;
-        }
-
-        const filtered = sessionEvents.filter(event => {
-            const eventDate = new Date(event.startDatetime);
-            return eventDate >= startDate && eventDate <= endDate;
-        });
-
-        // Only update state if the filtered events have changed
-        if (JSON.stringify(filtered) !== JSON.stringify(filteredEvents)) {
-            setFilteredEvents(filtered);
-        }
-    };
     const getStartOfWeek = (date: Date) => {
-        const d = new Date(date);
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        const startOfWeek = new Date(d.setDate(diff));
-        startOfWeek.setHours(0, 0, 0, 0); // Set the time to 00:00
-        return startOfWeek;
-    };
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const startOfWeek = new Date(d.setDate(diff));
+      startOfWeek.setHours(0, 0, 0, 0); // Set the time to 00:00
+      return startOfWeek;
+  };
 
-    const isCurrentOrFuturePeriod = useCallback(() => {
-        const now = new Date();
-        if (groupBy === 'Week') {
-            const currentWeekStart = getStartOfWeek(now);
-            const selectedWeekStart = getStartOfWeek(currentPeriod);
-            return selectedWeekStart.getTime() >= currentWeekStart.getTime();
-        } else if (groupBy === 'Month') {
-            const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth();
-            const selectedYear = currentPeriod.getFullYear();
-            const selectedMonth = currentPeriod.getMonth();
-            return selectedYear > currentYear || (selectedYear === currentYear && selectedMonth >= currentMonth);
-        }
-        return false;
-    }, [groupBy, currentPeriod]);
+  const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-    const handlePeriodChange = useCallback((direction: 'prev' | 'next') => {
-        const newPeriod = new Date(currentPeriod);
-        if (groupBy === 'Week') {
-            newPeriod.setDate(newPeriod.getDate() + (direction === 'next' ? 7 : -7));
-            // Check if the new period is in the future
-            if (getStartOfWeek(newPeriod).getTime() > getStartOfWeek(new Date()).getTime()) {
-                return; // Don't update if it's a future week
-            }
-        } else if (groupBy === 'Month') {
-            newPeriod.setMonth(newPeriod.getMonth() + (direction === 'next' ? 1 : -1));
-            // Check if the new period is in the future
-            const now = new Date();
-            if (newPeriod.getFullYear() > now.getFullYear() || 
-                (newPeriod.getFullYear() === now.getFullYear() && newPeriod.getMonth() > now.getMonth())) {
-                return; // Don't update if it's a future month
-            }
-        }
-        setCurrentPeriod(newPeriod);
-    }, [groupBy, currentPeriod]);
-
-    const formatPeriodDisplay = () => {
-        if (groupBy === 'Week') {
-            const start = getStartOfWeek(currentPeriod);
-            const end = new Date(start);
-            end.setDate(end.getDate() + 6);
-            return `${start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${end.getMonth() === start.getMonth() ? end.toLocaleDateString('en-GB', { day: '2-digit' }) : end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`;
-        } else if (groupBy === 'Month') {
-            return currentPeriod.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-        }
-        return 'All Time';
-    };
-
-    const formatTime = (seconds: number) => {
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const remainingSeconds = seconds % 60;
-      if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-      } else {
-        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-      }
-    };
-
-    const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
-    const prepareChartData = (events: SessionEvent[]) => {
+    // Move the prepareChartData function definition before the useMemo hook
+    const prepareChartData = useCallback((events: SessionEvent[]) => {
         if (chartType === 'session') {
             const sessions = Array.from(new Set(events.map(event => event.sessionId)));
             let chartData: any[] = [];
@@ -149,7 +51,6 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
                     ...sessionData
                 });
             });
-            console.log("chartData", chartData);
             return chartData;
         } else {
             let chartData: any[] = [];
@@ -220,17 +121,121 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
 
             return chartData;
         }
+    }, [timeBoxes, chartType, groupBy, currentPeriod, sessionIndexMap]);
+
+    // Now use useMemo with the properly defined prepareChartData function
+    const chartData = useMemo(() => prepareChartData(filteredEvents), [prepareChartData, filteredEvents]);
+
+    useEffect(() => {
+        filterEvents();
+    }, [groupBy, currentPeriod, sessionEvents]);
+
+    useEffect(() => {
+        // Update selected bar data when chart data changes
+        if (selectedBarData.sessionId) {
+            const updatedBarData = chartData.find(data => data.sessionId === selectedBarData.sessionId);
+            if (updatedBarData) {
+                handleBarClick(updatedBarData, 0);
+            }
+        }
+    }, [chartData, selectedBarData.sessionId]);
+
+    useEffect(() => {
+      // Create a mapping of session IDs to their indices
+      const newSessionIndexMap: Record<string, number> = {};
+      const uniqueSessionIds = Array.from(new Set(sessionEvents.map(event => event.sessionId)));
+      uniqueSessionIds.forEach((sessionId, index) => {
+          newSessionIndexMap[sessionId] = index+1; // Use unique session IDs
+      });
+      setSessionIndexMap(newSessionIndexMap); // Update state with the new mapping
+  }, [sessionEvents]);
+
+    const filterEvents = () => {
+        let startDate: Date, endDate: Date;
+        if (groupBy === 'Week') {
+            startDate = getStartOfWeek(currentPeriod);
+            endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 6);
+            endDate.setHours(23, 59, 59, 999);
+        } else if (groupBy === 'Month') {
+            startDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth(), 1);
+            endDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth() + 1, 0);
+            endDate.setHours(23, 59, 59, 999);
+        } else {
+            setFilteredEvents(sessionEvents);
+            return;
+        }
+
+        const filtered = sessionEvents.filter(event => {
+            const eventDate = new Date(event.startDatetime);
+            return eventDate >= startDate && eventDate <= endDate;
+        });
+
+        // Only update state if the filtered events have changed
+        if (JSON.stringify(filtered) !== JSON.stringify(filteredEvents)) {
+            setFilteredEvents(filtered);
+        }
+    };
+    
+
+    const isCurrentOrFuturePeriod = useCallback(() => {
+        const now = new Date();
+        if (groupBy === 'Week') {
+            const currentWeekStart = getStartOfWeek(now);
+            const selectedWeekStart = getStartOfWeek(currentPeriod);
+            return selectedWeekStart.getTime() >= currentWeekStart.getTime();
+        } else if (groupBy === 'Month') {
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const selectedYear = currentPeriod.getFullYear();
+            const selectedMonth = currentPeriod.getMonth();
+            return selectedYear > currentYear || (selectedYear === currentYear && selectedMonth >= currentMonth);
+        }
+        return false;
+    }, [groupBy, currentPeriod]);
+
+    const handlePeriodChange = useCallback((direction: 'prev' | 'next') => {
+        const newPeriod = new Date(currentPeriod);
+        if (groupBy === 'Week') {
+            newPeriod.setDate(newPeriod.getDate() + (direction === 'next' ? 7 : -7));
+            // Check if the new period is in the future
+            if (getStartOfWeek(newPeriod).getTime() > getStartOfWeek(new Date()).getTime()) {
+                return; // Don't update if it's a future week
+            }
+        } else if (groupBy === 'Month') {
+            newPeriod.setMonth(newPeriod.getMonth() + (direction === 'next' ? 1 : -1));
+            // Check if the new period is in the future
+            const now = new Date();
+            if (newPeriod.getFullYear() > now.getFullYear() || 
+                (newPeriod.getFullYear() === now.getFullYear() && newPeriod.getMonth() > now.getMonth())) {
+                return; // Don't update if it's a future month
+            }
+        }
+        setCurrentPeriod(newPeriod);
+    }, [groupBy, currentPeriod]);
+
+    const formatPeriodDisplay = () => {
+        if (groupBy === 'Week') {
+            const start = getStartOfWeek(currentPeriod);
+            const end = new Date(start);
+            end.setDate(end.getDate() + 6);
+            return `${start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${end.getMonth() === start.getMonth() ? end.toLocaleDateString('en-GB', { day: '2-digit' }) : end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`;
+        } else if (groupBy === 'Month') {
+            return currentPeriod.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        }
+        return 'All Time';
     };
 
-    // const dummyData: { title: string; time: number; color: string; }[] = [
-    //     { title: "Code Reading", time: 12120, color: "#77C8FF" },
-    //     { title: "Palta Labs", time: 4320, color: "#FF6E3D" },
-    //     { title: "Break", time: 1800, color: "#FAFF04" },
-    //     { title: "Chess", time: 445, color: "#F448ED" },
-    //     { title: "Chess", time: 323, color: "#F448ED" },
-    //     { title: "Chess", time: 100, color: "#F448ED" },
-    //     { title: "Chess", time: 100, color: "#F448ED" }
-    // ];
+    const formatTime = (seconds: number) => {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const remainingSeconds = seconds % 60;
+      if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+      } else {
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+      }
+    };
 
     const formatXAxisTick = (tick: string, index: number) => {
         if (chartType === "date") {
@@ -278,32 +283,30 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
         }
     };
 
-    const chartData = prepareChartData(filteredEvents);
-    const bucketTitles = Array.from(new Set(timeBoxes.map(box => box.name)));
     const yAxisTicks = getYAxisTicks(chartData);
 
     const handleBarClick = (data: any, _: number) => {
-      const barData = Object.entries(data)
-          .filter(([key, value]) => 
-              key !== 'name' && 
-              key !== 'fullDate' && 
-              key !== 'x' && 
-              key !== 'y' && 
-              key !== 'width' && 
-              key !== 'height' && 
-              key !== 'unknown' && 
-              key !== 'Unknown' && 
-              typeof value === 'number' && 
-              value > 0
-          )
-          .map(([key, value], i) => ({
-              title: key,
-              time: value as number,
-              color: `hsl(${i * 360 / bucketTitles.length}, 70%, 50%)`
-          }))
-          .sort((a, b) => b.time - a.time); // Sort by value in decreasing order
-      setSelectedBarData(barData);
-  };
+        const barData = Object.entries(data)
+            .filter(([key, value]) => 
+                key !== 'name' && 
+                key !== 'fullDate' && 
+                key !== 'x' && 
+                key !== 'y' && 
+                key !== 'width' && 
+                key !== 'height' && 
+                key !== 'unknown' && 
+                key !== 'Unknown' && 
+                typeof value === 'number' && 
+                value > 0
+            )
+            .map(([key, value], i) => ({
+                title: key,
+                time: value as number,
+                color: `hsl(${i * 360 / bucketTitles.length}, 70%, 50%)`,
+            }))
+            .sort((a, b) => b.time - a.time); 
+        setSelectedBarData({barData, sessionId: data.sessionId, sessionStart: data.startDatetime, sessionNumber: data.name});
+    };
 
     const handleChartClick = (data: any) => {
         if (data && data.activePayload && data.activePayload.length > 0) {
@@ -318,6 +321,8 @@ function ChartPage({ sessionEvents, timeBoxes }: { sessionEvents: SessionEvent[]
         if (isNaN(date.getTime())) return 'Invalid date';
         return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
     };
+
+    const bucketTitles = Array.from(new Set(timeBoxes.map(box => box.name)));
 
     return (
         <div className="flex flex-col items-center h-full min-w-[722px] max-w-[1200px] w-[90vw]">
