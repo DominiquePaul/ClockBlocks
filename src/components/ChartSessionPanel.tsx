@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import SecondaryButton from "./SecondaryButton"
 import { formatSeconds } from "../lib/utils"
 import EditModal from './EditModal'
@@ -13,11 +12,11 @@ function HorizontalLine({ timeString, barLength, color }: { timeString: string, 
     return (
         <div className="relative w-full h-1 mb-1 flex items-center">
             <div className="h-full rounded-full" style={{ 
-                width: `calc(${barLength * 100}% - 50px)`, // Adjust width to account for the space needed for the text
-                minWidth: '4px', // Add a minimum width
+                width: `calc((100% - 50px) * ${barLength})`,
+                minWidth: '4px',
                 background: color 
             }} />
-            <p className="text-left leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-sm font-normal leading-normal min-w-[50px] ml-2 pl-1 flex-shrink-0" style={{ color: color }}>{timeString}</p>
+            <p className="text-left leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-sm font-normal leading-normal w-[50px] ml-2 pl-1 flex-shrink-0" style={{ color: color }}>{timeString}</p>
         </div>
     )
 }
@@ -29,40 +28,42 @@ function BarGroup({ title, timeString, barLength, color }: { title: string, time
                 <h4 className="text-[#dddddd] leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-sm font-normal leading-normal self-stretch">{title}</h4>
                 <HorizontalLine barLength={barLength} timeString={timeString} color={color} />
             </div>
-            {/* <Arrow orientation="right" /> */}
         </div>
     )
 }
 
-export default function ChartSessionPanel({ elements }: { elements: { barData: { title: string, time: number, color: string }[], sessionId: string, sessionStart: string, sessionNumber: string } }) {
-    const [isModalOpen, setIsModalOpen] = useState(false)
+export default function ChartSessionPanel({ elements, isModalOpen, setIsModalOpen }: { 
+    elements: { barData: { title: string, time: number, color: string }[], sessionId: string, sessionStart: string, sessionNumber: string, title: string }, 
+    isModalOpen: boolean, 
+    setIsModalOpen: (open: boolean) => void 
+}) {
     const maxBarLength = Math.max(...elements.barData.map(element => element.time));
-
-    const setOpenModal = (open: boolean) => {
-        setIsModalOpen(open)
-    }
-
+    const totalTime = elements.barData.reduce((total, element) => total + element.time, 0);
     return (
         <>
-            <div className="flex flex-col w-full h-full justify-start items-center self-stretch p-4 rounded-[14px] bg-black backdrop-blur-[40px] overflow-auto">    
-                <div className="flex flex-col w-full items-start gap-1">
-                    <div className="flex justify-between items-center self-stretch pb-4">
-                        <h2 className="text-white leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-14px font-normal leading-normal">Time Block Split</h2>
-                        {elements.sessionId && <SecondaryButton text="Edit Session" onClick={() => setOpenModal(true)} />}
-                    </div>
-                    {elements.barData.map((element, index) => (
-                        <div key={index} className="flex flex-col items-start gap-1 self-stretch">
-                            <BarGroup title={element.title} timeString={formatSeconds(element.time)} barLength={element.time/maxBarLength} color={element.color} />
-                            {index < elements.barData.length - 1 && <Divider />}
-                        </div>
-                    ))}
+            <div className="flex flex-col w-full h-full justify-start self-stretch p-4 rounded-[14px] bg-black backdrop-blur-[40px] overflow-auto">    
+                <div className="flex h-[24px] justify-between w-full items-start pb-2">
+                    <p className="text-[rgba(217,217,217,0.30)] leading-trim text-edge-cap font-inter text-sm font-normal leading-normal">{elements.title}</p>
+                    {elements.sessionId && <SecondaryButton text="Edit Session" onClick={() => setIsModalOpen(true)}/>}
                 </div>
+                {totalTime > 0 && <p className="text-white leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-[24px] leading-normal pb-4">{`Total: ${formatSeconds(totalTime)}`}</p>}
+                {elements.barData.map((element, index) => (
+                    <div key={index} className="flex flex-col items-start gap-1 self-stretch">
+                        <BarGroup 
+                            title={element.title} 
+                            timeString={formatSeconds(element.time)} 
+                            barLength={element.time/maxBarLength} 
+                            color={element.color} // Use the color passed from ChartPage
+                        />
+                        {index < elements.barData.length - 1 && <Divider />}
+                    </div>
+                ))}
             </div>
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onClick={() => setOpenModal(false)}></div>
+                    <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
                     <div className="z-10">
-                        <EditModal onClose={() => setOpenModal(false)} sessionId={elements.sessionId} sessionStart={elements.sessionStart} sessionNumber={elements.sessionNumber} />
+                        <EditModal onClose={() => setIsModalOpen(false)} sessionId={elements.sessionId} sessionStart={elements.sessionStart} sessionNumber={elements.sessionNumber} />
                     </div>
                 </div>
             )}

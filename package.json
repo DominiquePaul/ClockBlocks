@@ -12,6 +12,7 @@
   "dependencies": {
     "@tauri-apps/api": "^1.6.0",
     "@tauri-apps/plugin-sql": "2.0.0-rc.1",
+    "generic-pool": "^3.9.0",
     "googleapis": "^144.0.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.436.0",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.6.2",
+    "@types/generic-pool": "^3.1.11",
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",

@@ -1,11 +1,11 @@
 import React from 'react';
+import { X } from 'lucide-react'; // Import the X icon from Lucide
 import PrimaryButton from './PrimaryButton';
 import Dropdown from './DropDownButton';
 import { useState, useEffect } from 'react';
 import { getSessionEvents, getTimeBoxes, addSessionEvent, updateSessionEvent, deleteSessionEvent, startTransaction, commitTransaction, rollbackTransaction } from '../lib/dbInteraction';
 import { SessionEvent, TimeBox } from '../lib/types';
 import { useSession } from '../context/SessionContext';
-
 
 
 interface TextItemProps {
@@ -20,8 +20,9 @@ const TextItem: React.FC<TextItemProps> = ({ content, isInput, onChange }) => {
       {isInput ? (
         <input
           type="text"
-          value={content}
-          onChange={(e) => onChange && onChange(e.target.value)}
+          placeholder="HH:MM"
+          value={content.slice(0, 5)} // Restrict length to 5 characters
+          onChange={(e) => onChange && onChange(e.target.value.slice(0, 5))} // Restrict length to 5 characters
           className="w-full bg-transparent text-[#D9D9D9] font-inter text-sm font-normal leading-normal outline-none text-center"
         />
       ) : (
@@ -37,7 +38,7 @@ interface SessionItemProps {
   end: string;
 }
 
-const formatTime = (isoString: string) => {
+const formatTimeFromISO = (isoString: string) => {
   const date = new Date(isoString);
   return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 };
@@ -47,9 +48,9 @@ const SessionItem: React.FC<SessionItemProps> = ({ title, start, end }) => {
     <div className="flex justify-between items-center self-stretch">
       <p className="text-[#D9D9D9] leading-trim text-edge-cap font-inter text-sm font-normal leading-normal">{title}</p>
       <div className="flex items-center gap-2">
-        <TextItem content={formatTime(start)} isInput={false} />
+        <TextItem content={formatTimeFromISO(start)} isInput={false} />
         <p className="text-[#D9D9D9] text-center leading-trim text-edge-cap font-inter text-sm font-normal leading-normal">-</p>
-        <TextItem content={formatTime(end)} isInput={false} />
+        <TextItem content={formatTimeFromISO(end)} isInput={false} />
       </div>
     </div>
   );
@@ -63,49 +64,128 @@ interface EditModalProps {
 }
 
 const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionNumber, onClose }) => {
+    console.log("Session ID", sessionId);
     const { setSessionEvents } = useSession();
     const [fromTime, setFromTime] = useState("");
     const [toTime, setToTime] = useState("");
     const [selectedTimeBoxId, setSelectedTimeBoxId] = useState<string>(''); // State for selected time box
-    const [selectedSessionEvents, setSelectedSessionEvents] = useState<SessionEvent[]>([]);
+    const [selectedSessionEvents, setSelectedSessionEvents] = useState<(SessionEvent & { timeBoxName: string })[]>([]);
     
     const [timeBoxes, setTimeBoxes] = useState<TimeBox[]>([]); // State for timeboxes
+    const [warningMessage, setWarningMessage] = useState<string>('');
+    const [isButtonActiveState, setIsButtonActiveState] = useState(false);
 
     useEffect(() => {
-        const loadSessionEvents = async () => {
-            const events = await getSessionEvents();
-            const filteredEvents = events.filter(event => event.sessionId === sessionId);
-            setSelectedSessionEvents(filteredEvents);
-
-            const lastEvent = filteredEvents[filteredEvents.length - 1];
-            if (fromTime === ""){
-                setFromTime(formatTime(lastEvent.startDatetime));
-            }
-            if (toTime === ""){
-                setToTime(lastEvent.endDatetime ? formatTime(lastEvent.endDatetime) : "23:59");
-            }
-        };
-
+        console.log("Effect: load timeboxes");
         const loadTimeBoxes = async () => {
             const boxes = await getTimeBoxes();
             setTimeBoxes(boxes);
         };
+        loadTimeBoxes();
+        console.log("Loaded timeboxes");
+    }, []);
+
+    useEffect(() => {
+        console.log("Effect: load sessions");
+        const loadSessionEvents = async () => {
+            const events = await getSessionEvents();
+            const filteredEvents = events.filter(event => event.sessionId === sessionId)
+                .sort((a, b) => new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime())
+                .map(event => {
+                    const timeBox = timeBoxes.find(box => box.id === event.timeBoxId);
+                    return {
+                        ...event,
+                        timeBoxName: timeBox ? timeBox.name : 'Unknown'
+                    };
+                });
+
+            setSelectedSessionEvents(filteredEvents);
+        };
 
         loadSessionEvents();
-        loadTimeBoxes();
+    }, [sessionId, timeBoxes]);
 
-    }, [sessionId]);
+    // New useEffect for setting fromTime and toTime
+    useEffect(() => {
+        console.log("Effect: fromTime and toTime");
+        if (selectedSessionEvents.length > 0) {
+            if (fromTime === "") {
+                setFromTime(formatTimeFromISO(selectedSessionEvents[0].startDatetime));
+            }
+            if (toTime === "") {
+                const lastEvent = selectedSessionEvents[selectedSessionEvents.length - 1];
+                setToTime(lastEvent.endDatetime ? formatTimeFromISO(lastEvent.endDatetime) : "23:59");
+            }
+        }
+    }, [selectedSessionEvents, fromTime, toTime]);
+
+    useEffect(() => {
+        const checkButtonActive = () => {
+            console.log("Selected time box ID", selectedTimeBoxId);
+            console.log("From time", fromTime);
+            console.log("To time", toTime);
+            console.log("Selected session events", selectedSessionEvents);
+            console.log("Time boxes", timeBoxes);
+            console.log("Session start", sessionStart);
+            console.log("Session ID", sessionId);
+            console.log("Session number", sessionNumber);
 
 
+            if (selectedTimeBoxId === '') {
+                console.log("Selected time box ID is empty");
+                setIsButtonActiveState(false);
+                return;
+            }
 
-    // Merge timeboxes with session events
-    const mergedEvents = selectedSessionEvents.map(event => {
-        const timeBox = timeBoxes.find(box => box.id === event.timeBoxId);
-        return {
-            ...event,
-            timeBoxName: timeBox ? timeBox.name : 'Unknown' // Add timeBoxName to the event
+            // Check if both fromTime and toTime are complete
+            if (!fromTime || !toTime || fromTime.length < 4 || toTime.length < 4) {
+                console.log("From-time to-time not long enough.");
+                setIsButtonActiveState(false);
+                // setWarningMessage('');
+                return;
+            }
+
+            const eventStartTimes = selectedSessionEvents.map(event => new Date(event.startDatetime));
+            const eventEndTimes = selectedSessionEvents.map(event => new Date(event.endDatetime || new Date().toISOString()));
+            const firstEventStart = new Date(Math.min(...eventStartTimes.map(date => date.getTime())));
+            const lastEventEnd = new Date(Math.max(...eventEndTimes.map(date => date.getTime())));
+
+            const [startHours, startMinutes] = fromTime.split(':').map(Number);
+            const [endHours, endMinutes] = toTime.split(':').map(Number);
+
+            const enteredStartTime = new Date(firstEventStart);
+            enteredStartTime.setHours(startHours, startMinutes, 0, 0);
+
+            const enteredEndTime = new Date(firstEventStart);
+            enteredEndTime.setHours(endHours, endMinutes, 0, 0);
+
+            if (enteredEndTime <= enteredStartTime) {
+                setWarningMessage('End time must be later than start time.');
+                setIsButtonActiveState(false);
+                return;
+            }
+
+            if (enteredEndTime < firstEventStart) {
+                setWarningMessage('New end time cannot be earlier than the start of first event.');
+                setIsButtonActiveState(false);
+                return;
+            }
+
+            console.log("Last event end", lastEventEnd.toISOString());
+            console.log("Entered start time", enteredStartTime.toISOString());
+
+            if (enteredStartTime > lastEventEnd) {
+                setWarningMessage('Start time cannot be later than the end of the last event.');
+                setIsButtonActiveState(false);
+                return;
+            }
+
+            setWarningMessage('');
+            setIsButtonActiveState(true);
         };
-    });
+
+        checkButtonActive();
+    }, [selectedTimeBoxId, fromTime, toTime, selectedSessionEvents]);
 
     const handleSave = async () => {
         let eventIdsToDelete: string[] = [];
@@ -120,11 +200,6 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
 
         startDatetime.setHours(startHours, startMinutes, 0, 0);
         endDatetime.setHours(endHours, endMinutes, 0, 0);
-
-        console.log("Events", selectedSessionEvents);
-        console.log("New timebox", selectedTimeBoxId);
-        console.log("New start", startDatetime.toISOString());
-        console.log("New end", endDatetime.toISOString());
 
         selectedSessionEvents.forEach(event => {
             const eventStartDatetime = new Date(event.startDatetime);
@@ -158,9 +233,6 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
             }
             else {
                 console.warn("No condition met for event", event, ". This is not supposed to happen.");
-                console.log("Event: ", event);
-                console.log("New start: ", startDatetime.toISOString());
-                console.log("New end: ", endDatetime.toISOString());
             }
         });
 
@@ -185,7 +257,7 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
         eventsToUpdate.forEach((event, index) => {
             const seconds = calculateDuration(event.startDatetime, event.endDatetime || new Date().toISOString());
             if (seconds !== null) {
-                console.log(`Event ID: ${event.id}, Duration: ${seconds} seconds`);
+                // console.log(`Event ID: ${event.id}, Duration: ${seconds} seconds`);
                 eventsToUpdate[index] = { ...event, seconds: seconds }; // Update the original array with the duration
             }
         });
@@ -194,7 +266,7 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
         newEvents.forEach((event, index) => {
             const seconds = calculateDuration(event.startDatetime, event.endDatetime || new Date().toISOString());
             if (seconds !== null) {
-                console.log(`New TimeBoxID: ${event.timeBoxId}, Duration: ${seconds} seconds`);
+                // console.log(`New TimeBoxID: ${event.timeBoxId}, Duration: ${seconds} seconds`);
                 newEvents[index] = { ...event, seconds: seconds }; // Update the new events array with the duration
             }
         });
@@ -227,15 +299,16 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
 
             // After successful transaction, fetch updated events
             const updatedEvents = await getSessionEvents();
-            setSessionEvents(updatedEvents);
 
             // Update the selected session events being shown and reset the dropdown, from time, and to time
-            const filteredEvents = updatedEvents.filter(event => event.sessionId === sessionId);
+            const filteredEvents = updatedEvents
+                .filter(event => event.sessionId === sessionId)
+                .sort((a, b) => new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime())
+                .map(event => ({ ...event, timeBoxName: timeBoxes.find(box => box.id === event.timeBoxId)?.name || 'Unknown' }));
+            
+            setSessionEvents(updatedEvents);
             setSelectedSessionEvents(filteredEvents);
             setSelectedTimeBoxId(''); // Reset the dropdown
-
-            // Close the modal
-            // onClose();
 
         } catch (error) {
             console.error("Error during save operation:", error);
@@ -251,7 +324,16 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
     };
 
     return (
-        <div className="flex p-6 flex-col items-center rounded-2xl bg-black backdrop-blur-[40px] w-[420px] border border-[#5E5E5E] border-opacity-30 max-h-[90vh] overflow-y-auto">
+        <div className="flex p-6 pb-1 flex-col items-center rounded-2xl bg-black backdrop-blur-[40px] w-[420px] border border-[#5E5E5E] border-opacity-30 max-h-[90vh] overflow-y-auto relative">
+            {/* Close button */}
+            <button 
+                onClick={onClose}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors duration-200"
+                aria-label="Close modal"
+            >
+                <X size={20} />
+            </button>
+
             <div className="flex flex-col items-center gap-8 self-stretch p-4">
                 <div className="flex flex-col items-start gap-8 self-stretch">
                     <div className="flex flex-col items-start gap-0 self-stretch">
@@ -263,7 +345,7 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
                         </p>
                     </div>
                     <div className="flex flex-col items-start gap-4 self-stretch">
-                        {mergedEvents.map((event, index) => (
+                        {selectedSessionEvents.map((event, index) => (
                             <SessionItem 
                                 key={index} 
                                 title={event.timeBoxName ?? 'Unknown'} // Use nullish coalescing operator
@@ -295,10 +377,13 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
                             </div>
                         </div>
                     </div>
-                    <div className="flex justify-center items-center gap-8 self-stretch">
-                        <PrimaryButton isActive={true} onClick={handleSave}>
+                    <div className="flex flex-col justify-center items-center self-stretch gap-4">
+                        <PrimaryButton isActive={true} isClickable={isButtonActiveState} onClick={handleSave}>
                             Overwrite
                         </PrimaryButton>
+                        <div className="h-4">
+                            <p className={`text-gray-500 text-sm ${warningMessage ? '' : 'opacity-0 pointer-events-none'}`}>{warningMessage || ' '}</p>
+                        </div>
                     </div>
                 </div>
             </div>

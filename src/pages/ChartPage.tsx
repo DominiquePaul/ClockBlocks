@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Refe
 import { SessionEvent, TimeBox } from "../lib/types";
 import SortingPanel from "../components/ChartSorting";
 import ChartSessionPanel from "../components/ChartSessionPanel";
-import { formatSeconds } from "../lib/utils";
+import { formatSeconds, formatTime } from "../lib/utils";
 import { useSession } from '../context/SessionContext';
 
 function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
@@ -12,8 +12,9 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
     const [groupBy, setGroupBy] = useState<'Week' | 'Month' | 'All'>('Week');
     const [currentPeriod, setCurrentPeriod] = useState<Date>(new Date());
     const [filteredEvents, setFilteredEvents] = useState<SessionEvent[]>([]);
-    const [selectedBarData, setSelectedBarData] = useState<{ barData: { title: string; time: number; color: string; }[], sessionId: string, sessionStart: string, sessionNumber: string }>({ barData: [], sessionId: '', sessionStart: '', sessionNumber: '' });
+    const [selectedBarData, setSelectedBarData] = useState<{ barData: { title: string; time: number; color: string; }[], sessionId: string, sessionStart: string, sessionNumber: string, title: string }>({ barData: [], sessionId: '', sessionStart: '', sessionNumber: '', title: '' });
     const [sessionIndexMap, setSessionIndexMap] = useState<Record<string, number>>({});
+    const [isModalOpen, setIsModalOpen] = useState(false)
 
     const getStartOfWeek = (date: Date) => {
       const d = new Date(date);
@@ -226,17 +227,6 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
         return 'All Time';
     };
 
-    const formatTime = (seconds: number) => {
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const remainingSeconds = seconds % 60;
-      if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-      } else {
-        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-      }
-    };
-
     const formatXAxisTick = (tick: string, index: number) => {
         if (chartType === "date") {
             if (groupBy === 'Week') {
@@ -258,7 +248,11 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
     };
 
     const getYAxisTicks = (data: any[]) => {
-        const maxSeconds = Math.max(...data.flatMap(Object.values).filter((v): v is number => typeof v === 'number'));
+        const maxSeconds = Math.max(...data.map(item => 
+          Object.values(item).reduce((sum: number, value) => 
+            typeof value === 'number' ? sum + value : sum, 0
+          )
+        ).filter((value): value is number => typeof value === 'number'));
         const maxHours = maxSeconds / 3600;
 
         if (maxHours < 1) {
@@ -285,7 +279,9 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
 
     const yAxisTicks = getYAxisTicks(chartData);
 
+
     const handleBarClick = (data: any, _: number) => {
+        console.log(data);
         const barData = Object.entries(data)
             .filter(([key, value]) => 
                 key !== 'name' && 
@@ -299,13 +295,13 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
                 typeof value === 'number' && 
                 value > 0
             )
-            .map(([key, value], i) => ({
+            .map(([key, value]) => ({
                 title: key,
                 time: value as number,
-                color: `hsl(${i * 360 / bucketTitles.length}, 70%, 50%)`,
+                color: getTimeBoxColor(key), // Changed from colour to color
             }))
             .sort((a, b) => b.time - a.time); 
-        setSelectedBarData({barData, sessionId: data.sessionId, sessionStart: data.startDatetime, sessionNumber: data.name});
+        setSelectedBarData({barData, sessionId: data.sessionId, sessionStart: data.startDatetime, sessionNumber: data.name, title: data.sessionId ? `Session ${data.name}` : formatTooltipDate(data.fullDate)});
     };
 
     const handleChartClick = (data: any) => {
@@ -324,9 +320,14 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
 
     const bucketTitles = Array.from(new Set(timeBoxes.map(box => box.name)));
 
+    const getTimeBoxColor = (timeBoxName: string) => {
+        const timeBox = timeBoxes.find(box => box.name === timeBoxName);
+        return timeBox?.colour || `hsl(${Math.random() * 360}, 70%, 50%)`;
+    };
+
     return (
         <div className="flex flex-col items-center h-full min-w-[722px] max-w-[1200px] w-[90vw]">
-            <div className="flex justify-between items-stretch gap-4 h-[70vh] w-full"> 
+            <div className="flex justify-between items-stretch gap-3 h-[70vh] w-full"> 
                 <div className="w-2/3">
                     <div className="p-8 h-full rounded-[14px] bg-black backdrop-blur-[40px] flex flex-col">
                         <div className="flex flex-col mb-4">
@@ -418,7 +419,7 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
                                                                     <div key={index} className="flex items-center">
                                                                         <div 
                                                                             className="w-3 h-3 rounded-full mr-2" 
-                                                                            style={{ backgroundColor: (entry.color ?? 'defaultColor') }}></div>
+                                                                            style={{ backgroundColor: getTimeBoxColor(entry.name) }}></div>
                                                                         <p>
                                                                             {entry.name}: {formatTime(entry.value)}
                                                                         </p>
@@ -454,12 +455,12 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
                                               strokeWidth={0.5}
                                           />
                                       ))}
-                                    {bucketTitles.map((title, index) => (
+                                    {bucketTitles.map((title) => (
                                         <Bar 
                                             key={title} 
                                             dataKey={title} 
                                             stackId="a" 
-                                            fill={`hsl(${index * 360 / bucketTitles.length}, 70%, 50%)`}
+                                            fill={getTimeBoxColor(title)}
                                         />
                                     ))}
                                 </BarChart>
@@ -468,7 +469,7 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
                     </div>
                 </div>
 
-                <div className="flex h-full w-1/3 flex-col gap-4 flex-shrink-0 min-w-[300px]">
+                <div className="flex h-full w-1/3 flex-col gap-3 flex-shrink-0 min-w-[300px]">
                     <div className="flex-shrink-0 h-[140px]">
                         <SortingPanel 
                             chartType={chartType} 
@@ -478,10 +479,11 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
                             currentPeriod={formatPeriodDisplay()}
                             onPeriodChange={handlePeriodChange}
                             disableForwardNavigation={isCurrentOrFuturePeriod()}
+                            disableShortcuts={isModalOpen}
                         />
                     </div>
                     <div className="flex-1 overflow-auto">
-                        <ChartSessionPanel elements={selectedBarData} />
+                        <ChartSessionPanel elements={selectedBarData} isModalOpen={isModalOpen} setIsModalOpen={setIsModalOpen} />
                     </div>
                 </div>
             </div>

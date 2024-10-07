@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, PlusCircle, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { TimeBox } from "../lib/types";
-import { renameTimeBox, addTimeBox, deleteTimeBox, toggleVisibilityTimeBox } from "../lib/dbInteraction";
+import { renameTimeBox, addTimeBox, deleteTimeBox, toggleVisibilityTimeBox, changeTimeBoxColor } from "../lib/dbInteraction";
 import { ask } from '@tauri-apps/api/dialog';
 import GoogleSignInButton from '../components/GoogleSignIn';
 import { invoke } from '@tauri-apps/api/tauri'
 import PrimaryButton from '../components/PrimaryButton';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Palette } from 'lucide-react';
 import IconButton from '../components/IconButton'; // Add this import
 
 function SettingsPage({ 
@@ -25,6 +25,11 @@ function SettingsPage({
 
     const [sheetURL, setSheetURL] = useState<string | undefined>(undefined);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [activeColorPicker, setActiveColorPicker] = useState<string | null>(null);
+
+    console.log(timeBoxes);
+
+    const colours = ['#77C8FF', '#FAFF07', '#FF6E3D', '#F448ED', '#6EEB4E', '#F42E2D', '#9747FF', '#FFA500'];
 
     useEffect(() => {
       getSheetURL().then(setSheetURL);
@@ -63,7 +68,7 @@ function SettingsPage({
   
     const handleAdd = async (name: string) => {
       let newId = await addTimeBox(name);
-      setBoxes(prevBoxes => [...prevBoxes, { id: newId, name: name, seconds: 0, isActive: false, isHidden: false, isDeleted: false }]);
+      setBoxes(prevBoxes => [...prevBoxes, { id: newId, name: name, seconds: 0, isActive: false, isHidden: false, isDeleted: false, colour: '#77C8FF' }]);
     };
   
     const handleToggleVisibility = async (id: string, currentVisibility: boolean) => {
@@ -77,6 +82,20 @@ function SettingsPage({
       } catch (error) {
         console.error('Error toggling TimeBox visibility:', error);
         // Optionally, add user feedback here
+      }
+    };
+
+    const handleChangeColor = async (id: string, color: string) => {
+      try {
+        await changeTimeBoxColor(id, color);
+        setBoxes(prevBoxes =>
+          prevBoxes.map(box =>
+            box.id === id ? { ...box, colour: color } : box
+          )
+        );
+        setActiveColorPicker(null);
+      } catch (error) {
+        console.error('Error changing TimeBox color:', error);
       }
     };
 
@@ -107,7 +126,7 @@ function SettingsPage({
     };
 
     return (
-      <div className="flex flex-col lg:flex-row items-stretch p- overflow-auto gap-4 h-full">
+      <div className="flex flex-col lg:flex-row items-stretch p- overflow-auto gap-3 h-full">
         <div className="flex-1 flex flex-col items-center justify-start bg-black rounded-lg p-8 lg:max-w-[400px] min-w-[400px]">
           {/* <h3 className="text-lg font-semibold text-white pb-4">Blocks</h3> */}
           <div className="w-full overflow-y-auto pb-4">
@@ -119,14 +138,41 @@ function SettingsPage({
                       Time Blocks
                   </p>
               </div>
+              {/* ${timeBox.colour} 4D4D4D */}
             {timeBoxes.filter(box => !box.isDeleted).map(timeBox => (
+              
               <div key={timeBox.id} className="flex items-center pb-2 w-full gap-2">
-                <div className="flex h-10 gap-2 flex-1 self-stretch p-2 rounded-lg border border-[#4D4D4D] backdrop-blur-sm">
+                <div 
+                  className={`flex h-10 gap-2 flex-1 self-stretch p-2 rounded-lg border backdrop-blur-sm`}
+                  style={{ borderColor: timeBox.colour }}
+                >
                   <input
                     value={timeBox.name}
                     onChange={(e) => handleRename(timeBox.id, e.target.value)}
                     className="flex-grow p-2 text-white font-inter font-normal leading-normal bg-transparent focus:outline-none"
                   />
+                </div>
+                <div className="relative">
+                  <IconButton
+                    onClick={() => setActiveColorPicker(activeColorPicker === timeBox.id ? null : timeBox.id)}
+                    icon={<Palette size={16} className="text-white" />}
+                  />
+                  {activeColorPicker === timeBox.id && (
+                    <div className="fixed z-50">
+                      <div className="absolute top-full mt-1 p-2 bg-[#232323] rounded-lg shadow-lg transform -translate-x-[42px]" style={{ width: '120px' }}>
+                        <div className="grid grid-cols-4 gap-2">
+                          {colours.map((colour) => (
+                            <button
+                              key={colour}
+                              className="w-6 h-6 rounded-md"
+                              style={{ backgroundColor: colour }}
+                              onClick={() => handleChangeColor(timeBox.id, colour)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <IconButton
                   onClick={() => handleToggleVisibility(timeBox.id, timeBox.isHidden)}
@@ -139,7 +185,7 @@ function SettingsPage({
               </div>
             ))}
           </div>
-          <PrimaryButton isActive={true} onClick={() => handleAdd("New Time Block")} icon={<PlusCircle size={16} />}>
+          <PrimaryButton isActive={true} onClick={() => handleAdd("New Time Block")} icon={<PlusCircle size={16} />} isClickable={true}>
             Add Bucket
           </PrimaryButton>
         </div>
@@ -173,13 +219,17 @@ function SettingsPage({
                       <PrimaryButton
                         isActive={true}
                         onClick={() => window.open(sheetURL, '_blank')}
-                        icon={<ExternalLink size={16} />}>
+                        icon={<ExternalLink size={16} />}
+                        isClickable={true}
+                      >
                         Open Sheet
                       </PrimaryButton>
                       <PrimaryButton
                         isActive={true}
                         onClick={handleSync}
-                        icon={<RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />}>
+                        icon={<RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />}
+                        isClickable={true}
+                      >
                         Sync Data
                       </PrimaryButton>
                     </div>

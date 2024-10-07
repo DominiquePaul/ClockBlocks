@@ -31,10 +31,13 @@ export default function SortingPanel({
     setGroupBy, 
     currentPeriod, 
     onPeriodChange,
-    disableForwardNavigation
-}: SortingPanelProps) {
+    disableForwardNavigation,
+    disableShortcuts // New prop to disable keyboard shortcuts
+}: SortingPanelProps & { disableShortcuts?: boolean }) { // Updated props interface
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            if (disableShortcuts) return; // Exit if shortcuts are disabled
+
             if (event.key.toLowerCase() === 's') {
                 setChartType('session');
             } else if (event.key.toLowerCase() === 'd') {
@@ -62,7 +65,7 @@ export default function SortingPanel({
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [groupBy, onPeriodChange, setChartType, setGroupBy, disableForwardNavigation]);
+    }, [groupBy, onPeriodChange, setChartType, setGroupBy, disableForwardNavigation, disableShortcuts]); // Added disableShortcuts to dependencies
 
     return (
         <div className="flex w-full p-4 flex-col items-start gap-2 rounded-[14px] bg-black backdrop-blur-[40px]">

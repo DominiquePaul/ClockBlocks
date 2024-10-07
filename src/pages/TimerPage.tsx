@@ -36,7 +36,7 @@ function TimerPage({ boxes, handleTimeBoxClick, formatTime }: {
   const gridClass = getGridClass(boxes.length);
 
   return (
-    <div className={`grid ${gridClass} gap-4  w-full max-w-[1200px] mx-auto`}>
+    <div className={`grid ${gridClass} gap-3  w-full max-w-[1200px] mx-auto`}>
       {boxes.map(box => (
         <div key={box.id} className="flex justify-center">
           <Box
@@ -44,6 +44,7 @@ function TimerPage({ boxes, handleTimeBoxClick, formatTime }: {
             seconds={formatTime(box.seconds)}
             isActive={box.isActive}
             onClick={() => handleTimeBoxClick(box.id)}
+            color={box.colour}
           />
         </div>
       ))}

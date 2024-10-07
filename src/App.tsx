@@ -6,7 +6,7 @@ import ChartPage from './pages/ChartPage';
 import SettingsPage from './pages/SettingsPage';
 import NavigationBar from './components/NavigationBar';
 import { TimeBox, SessionEvent, Session, AuthToken } from "./lib/types";
-import { getTimeBoxes, getSessionEvents, addSessionEvent, upsertSession, maybeInitializeDatabase } from "./lib/dbInteraction";
+import { getTimeBoxes, getSessionEvents, addSessionEvent, upsertSession, maybeInitializeDatabase, startTransaction, commitTransaction, rollbackTransaction } from "./lib/dbInteraction";
 import { handleSyncData } from "./lib/writeToGSheet";
 import RoundedBox from "./components/RoundedBox";
 import { SessionProvider, useSession } from './context/SessionContext';
@@ -152,16 +152,23 @@ function AppContent() {
       sessionEvents: events
     });
 
-    const saveToDatabase = (events: SessionEvent[], session: Session) => {
-      const lastEvent = events[events.length - 2]; // The second-to-last event is the one we need to update
-      Promise.all([
-        lastEvent ? addSessionEvent(lastEvent) : Promise.resolve(),
-        upsertSession(session)
-      ]).then(() => {
+    const saveToDatabase = async (events: SessionEvent[], session: Session) => {
+      const lastEvent = events[events.length - 2];
+      let db;
+      try {
+        db = await startTransaction();
+        if (lastEvent) {
+          await addSessionEvent(lastEvent, db);
+        }
+        await upsertSession(session, db);
+        await commitTransaction(db);
         console.log("Session and events updated successfully");
-      }).catch((error) => {
+      } catch (error) {
+        if (db) {
+          await rollbackTransaction(db);
+        }
         console.error("Failed to update session or events:", error);
-      });
+      }
     };
 
     setActiveBox(id);
@@ -236,7 +243,7 @@ function AppContent() {
     <div className="bg-black min-h-screen flex flex-col overflow-hidden">
       <div className="flex-grow flex flex-col w-full items-center overflow-auto mb-3 pt-min-[20px] pt-[6vh]">
         <NavigationBar activePage={activePage} setActivePage={setActivePage} />
-        <div className="flex flex-col justify-start items-center gap-[10px] w-auto mx-auto bg-[#232323] rounded-xl min-w-[400px] p-4">
+        <div className="flex flex-col justify-start items-center gap-[10px] w-auto mx-auto bg-[#232323] rounded-xl min-w-[400px] p-3">
           {activePage === 'timer' && (
             <TimerPage 
               boxes={timeBoxes.filter(box => !box.isHidden && !box.isDeleted)} 

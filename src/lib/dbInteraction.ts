@@ -16,7 +16,9 @@ async function checkDevMode(): Promise<boolean> {
 }
 
 async function getDatabase(): Promise<Database> {
-  if (dbInstance) return dbInstance;
+  if (dbInstance) {
+    return dbInstance;
+  }
 
   const isDev = await checkDevMode();
   const dbName = isDev ? 'clockblocks_dev.db' : 'clockblocks.db';
@@ -81,7 +83,8 @@ export async function maybeInitializeDatabase() {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         isHidden BOOLEAN DEFAULT FALSE,
-        isDeleted BOOLEAN DEFAULT FALSE
+        isDeleted BOOLEAN DEFAULT FALSE,
+        colour TEXT NOT NULL DEFAULT '#D82726',
       )
     `);
     const timeBoxesEmpty = await isTableEmpty('timeBoxes');
@@ -123,11 +126,12 @@ export async function maybeInitializeDatabase() {
     if (timeBoxesEmpty) {
       // Insert initial timeBoxes data only if the table is empty
       const timeBoxes = ['Code', 'Read', 'Calls', 'Write', 'Chess', 'Exercise'];
-      for (const name of timeBoxes) {
-        await db.execute(
-          'INSERT INTO timeBoxes (id, name) VALUES ($1, $2)',
-          [uuidv4(), name]
-        );
+      const colours = ['#77C8FF', '#FAFF07', '#FF6E3D', '#F448ED', '#6EEB4E', '#F42E2D'];
+      for (let i = 0; i < timeBoxes.length; i++) {
+          await db.execute(
+            'INSERT INTO timeBoxes (id, name, colour) VALUES ($1, $2, $3)',
+            [uuidv4(), timeBoxes[i], colours[i]]
+          );
       }
     }
 
@@ -184,8 +188,9 @@ export async function addSessionEvent(sessionEvent: Omit<SessionEvent, 'id'>, tr
     // Update session duration
     const duration = await calculateSessionDuration(sessionEvent.sessionId, db);
     await updateSessionDuration(sessionEvent.sessionId, duration, db);
-  } finally {
-    if (!transaction) await db.close();
+  } catch (error) {
+    console.error('Error adding SessionEvent:', error);
+    throw error;
   }
 }
 
@@ -207,14 +212,16 @@ export async function getSessionEvents(): Promise<SessionEvent[]> {
   const db = await getDatabase();
   if (!db) return [];
   
-  return await db.select<SessionEvent[]>('SELECT * FROM sessionEvents');
+  const sessionEvents = await db.select<SessionEvent[]>('SELECT * FROM sessionEvents');
+  return sessionEvents;
 }
 
 export async function getSessions(): Promise<Session[]> {
   const db = await getDatabase();
   if (!db) return [];
   
-  return await db.select<Session[]>('SELECT * FROM sessions');
+  const sessions = await db.select<Session[]>('SELECT * FROM sessions');
+  return sessions;
 }
 
 export async function addSession(session: Session): Promise<string> {
@@ -233,12 +240,12 @@ export async function addSession(session: Session): Promise<string> {
   }
 }
 
-export async function upsertSession(session: Session): Promise<void> {
-  const db = await getDatabase();
-  if (!db) throw new Error('Database not available');
+export async function upsertSession(session: Session, db?: Database): Promise<void> {
+  const connection = db || await getDatabase();
+  if (!connection) throw new Error('Database not available');
 
   try {
-    await db.execute(`
+    await connection.execute(`
       INSERT INTO sessions (id, startDatetime, endDatetime, duration)
       VALUES ($1, $2, $3, $4)
       ON CONFLICT (id) DO UPDATE SET
@@ -337,8 +344,9 @@ export async function updateSessionEvent(event: SessionEvent, transaction?: Data
       SET timeBoxId = $1, startDatetime = $2, endDatetime = $3, seconds = $4 
       WHERE id = $5
     `, [event.timeBoxId, event.startDatetime, event.endDatetime, event.seconds, event.id]);
-  } finally {
-    if (!transaction) await db.close();
+  } catch (error) {
+    console.error('Error updating SessionEvent:', error);
+    throw error;
   }
 }
 
@@ -358,8 +366,9 @@ export async function deleteSessionEvent(id: string, transaction?: Database): Pr
     // Update session duration
     const duration = await calculateSessionDuration(sessionId, db);
     await updateSessionDuration(sessionId, duration, db);
-  } finally {
-    if (!transaction) await db.close();
+  } catch (error) {
+    console.error('Error deleting SessionEvent:', error);
+    throw error;
   }
 }
 
@@ -398,15 +407,17 @@ async function updateSessionDuration(sessionId: string, duration: number, db?: D
   } catch (error) {
     console.error('Error updating session duration:', error);
     throw error;
-  } finally {
-    if (!db) await connection.close();
   }
 }
 
-// Add a function to close the database connection when needed
-export async function closeDatabase(): Promise<void> {
-  if (dbInstance) {
-    await dbInstance.close();
-    dbInstance = null;
+export async function changeTimeBoxColor(id: string, color: string): Promise<void> {
+  const db = await getDatabase();
+  if (!db) throw new Error('Database not available');
+
+  try {
+    await db.execute('UPDATE timeBoxes SET colour = $1 WHERE id = $2', [color, id]);
+  } catch (error) {
+    console.error('Error changing TimeBox color:', error);
+    throw error;
   }
 }

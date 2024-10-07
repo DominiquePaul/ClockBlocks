@@ -5,6 +5,7 @@ export interface TimeBox {
     isActive: boolean;
     isHidden: boolean;
     isDeleted: boolean;
+    colour: string;
 }
 
 export interface SessionEvent {
