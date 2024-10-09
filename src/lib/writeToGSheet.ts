@@ -89,6 +89,10 @@ function calculateDurationsByTimeBox(session: Session, sessionEvents: SessionEve
 }
 
 function addDurations(duration1: string, duration2: string): string {
+  if (!duration1 || !duration2) {
+    return formatDuration(0);
+  }
+
   const [h1, m1, s1] = duration1.split(':').map(Number);
   const [h2, m2, s2] = duration2.split(':').map(Number);
   

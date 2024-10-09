@@ -6,9 +6,6 @@ export default {
   ],
   theme: {
     extend: {
-      fontFamily: {
-        'tt-hoves': ['"TT Hoves Pro"', 'sans-serif'],
-      },
       colors: {
         google: {
           'text-gray': '#3c4043',
@@ -25,6 +22,10 @@ export default {
       },
       fontSize: {
         'sm': '12px',
+      },
+      fontFamily: {
+        montserrat: ['Montserrat', 'sans-serif'],
+        poppins: ['Poppins', 'sans-serif'],
       },
     },
   },

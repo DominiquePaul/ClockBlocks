@@ -8,6 +8,7 @@ import { invoke } from '@tauri-apps/api/tauri'
 import PrimaryButton from '../components/PrimaryButton';
 import { ExternalLink, Palette } from 'lucide-react';
 import IconButton from '../components/IconButton'; // Add this import
+import { open } from '@tauri-apps/api/shell';
 
 function SettingsPage({ 
   timeBoxes, 
@@ -28,8 +29,13 @@ function SettingsPage({
     const [activeColorPicker, setActiveColorPicker] = useState<string | null>(null);
 
     console.log(timeBoxes);
+    console.log(sheetURL);
 
-    const colours = ['#77C8FF', '#FAFF07', '#FF6E3D', '#F448ED', '#6EEB4E', '#F42E2D', '#9747FF', '#FFA500'];
+    // Colours old
+    // const colours = ['#77C8FF', '#FAFF07', '#FF6E3D', '#F448ED', '#6EEB4E', '#F42E2D', '#9747FF', '#FFA500'];
+
+    // Colours new
+    const colours = ['#1673FF', '#25D1DA', '#91E94B', '#6B5EFF', '#FF4040', '#F1FF53', '#F14EFF', '#FF9E1D'];
 
     useEffect(() => {
       getSheetURL().then(setSheetURL);
@@ -68,7 +74,7 @@ function SettingsPage({
   
     const handleAdd = async (name: string) => {
       let newId = await addTimeBox(name);
-      setBoxes(prevBoxes => [...prevBoxes, { id: newId, name: name, seconds: 0, isActive: false, isHidden: false, isDeleted: false, colour: '#77C8FF' }]);
+      setBoxes(prevBoxes => [...prevBoxes, { id: newId, name: name, seconds: 0, isActive: false, isHidden: false, isDeleted: false, colour: colours[0] }]);
     };
   
     const handleToggleVisibility = async (id: string, currentVisibility: boolean) => {
@@ -125,16 +131,22 @@ function SettingsPage({
       }
     };
 
+    const handleOpenSheet = async () => {
+      if (sheetURL) {
+        await open(sheetURL);
+      }
+    };
+
     return (
-      <div className="flex flex-col lg:flex-row items-stretch p- overflow-auto gap-3 h-full">
-        <div className="flex-1 flex flex-col items-center justify-start bg-black rounded-lg p-8 lg:max-w-[400px] min-w-[400px]">
+      <div className="flex flex-col lg:flex-row items-stretch overflow-auto gap-3 h-full">
+        <div className="flex-1 flex flex-col items-center justify-start bg-black rounded-lg p-8 lg:max-w-[400px] min-w-[500px]">
           {/* <h3 className="text-lg font-semibold text-white pb-4">Blocks</h3> */}
-          <div className="w-full overflow-y-auto pb-4">
+          <div className="w-full pb-4">
             <div className="flex flex-col pb-8">
-                  <p className="text-[rgba(217,217,217,0.30)] leading-trim text-edge-cap font-inter text-sm font-normal leading-normal">
+                  <p className="text-[rgba(217,217,217,0.30)] leading-trim text-edge-cap  text-sm font-normal leading-normal">
                   Settings
                   </p>
-                  <p className="text-[#D9D9D9] leading-trim text-edge-cap font-inter text-[28px] font-normal leading-normal">
+                  <p className="text-[#D9D9D9] leading-trim text-edge-cap  text-[28px] font-normal leading-normal">
                       Time Blocks
                   </p>
               </div>
@@ -142,24 +154,41 @@ function SettingsPage({
             {timeBoxes.filter(box => !box.isDeleted).map(timeBox => (
               
               <div key={timeBox.id} className="flex items-center pb-2 w-full gap-2">
-                <div 
+                {/* <div 
                   className={`flex h-10 gap-2 flex-1 self-stretch p-2 rounded-lg border backdrop-blur-sm`}
-                  style={{ borderColor: timeBox.colour }}
+                  style={{ borderColor: `${timeBox.colour}100` }}
                 >
                   <input
                     value={timeBox.name}
                     onChange={(e) => handleRename(timeBox.id, e.target.value)}
-                    className="flex-grow p-2 text-white font-inter font-normal leading-normal bg-transparent focus:outline-none"
+                    className="flex-grow p-2 text-[14px] text-white font-normal leading-normal bg-transparent focus:outline-none"
+                  />
+                </div> */}
+                <div 
+                  className={`flex h-10 gap-2 flex-1 self-stretch p-2 backdrop-blur-sm relative ${timeBox.isHidden ? 'border-gray-400' : ''}`}
+                  style={{
+                    backgroundImage: timeBox.isHidden ? 'none' : `linear-gradient(to right, ${timeBox.colour}, #4D4D4D)`,
+                    border: timeBox.isHidden ? '1px solid gray' : '0.5px solid transparent',
+                    borderRadius: '8px',
+                    backgroundClip: 'padding-box',
+                    backgroundOrigin: 'border-box',
+                  }} 
+                >
+                <div className="absolute inset-0 rounded-[7px] bg-black m-[1px]" />
+                  <input
+                    value={timeBox.name}
+                    onChange={(e) => handleRename(timeBox.id, e.target.value)}
+                    className={`relative flex-grow p-2 text-weight-400 text-[14px] font-normal leading-normal bg-transparent focus:outline-none ${timeBox.isHidden ? 'text-gray-500' : 'text-white'}`}
                   />
                 </div>
-                <div className="relative">
+                <div className="relative overflow-visible">
                   <IconButton
                     onClick={() => setActiveColorPicker(activeColorPicker === timeBox.id ? null : timeBox.id)}
                     icon={<Palette size={16} className="text-white" />}
                   />
                   {activeColorPicker === timeBox.id && (
-                    <div className="fixed z-50">
-                      <div className="absolute top-full mt-1 p-2 bg-[#232323] rounded-lg shadow-lg transform -translate-x-[42px]" style={{ width: '120px' }}>
+                    <div className="absolute z-50 mt-1 left-1/2 transform -translate-x-1/2">
+                      <div className="p-2 bg-[#232323] rounded-lg shadow-lg w-[120px]">
                         <div className="grid grid-cols-4 gap-2">
                           {colours.map((colour) => (
                             <button
@@ -198,7 +227,12 @@ function SettingsPage({
             <path d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251" fill="#EB4335"/>
           </svg>
           <div className="flex flex-col items-center gap-6 w-full">
-            <h4 className="text-m font-semibold text-white text-center">Google Sheets Integration</h4>
+            <h4 className="text-m text-white text-center">Google Sheets Integration</h4>
+            {!isAuthenticated ? (
+            <div className="max-w-[400px] text-center">
+              <p className="text-white text-[12px]">This integration allows ClockBlocks to create a new Google Sheet and export your data so you can create your own charts. ClockBlocks does not access anything else.</p>
+            </div>
+            ): <></>}
             {!isAuthenticated ? (
               <div className="flex justify-center w-full">
                 <GoogleSignInButton 
@@ -218,19 +252,19 @@ function SettingsPage({
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
                       <PrimaryButton
                         isActive={true}
-                        onClick={() => window.open(sheetURL, '_blank')}
-                        icon={<ExternalLink size={16} />}
-                        isClickable={true}
-                      >
-                        Open Sheet
-                      </PrimaryButton>
-                      <PrimaryButton
-                        isActive={true}
                         onClick={handleSync}
                         icon={<RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />}
                         isClickable={true}
                       >
                         Sync Data
+                      </PrimaryButton>
+                      <PrimaryButton
+                        isActive={true}
+                        onClick={handleOpenSheet}
+                        icon={<ExternalLink size={16} />}
+                        isClickable={true}
+                      >
+                        Open Sheet
                       </PrimaryButton>
                     </div>
                   </div>

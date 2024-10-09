@@ -538,19 +538,9 @@ async fn get_sheet_id(app_handle: tauri::AppHandle) -> Result<Option<String>, St
 }
 
 fn main() {
-    let app_state = Arc::new(AppState {
-        pkce_verifier: Mutex::new(None),
-    });
-
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::default().build())
         .setup(|app| {
-            #[cfg(debug_assertions)]
-            {       
-                let window = app.get_window("main").unwrap();
-                window.open_devtools();
-            }
-            
             // Set up a handler for the "open-external" event
             let handle = app.handle();
             let handle_clone = handle.clone();
@@ -558,6 +548,10 @@ fn main() {
                 if let Some(url) = event.payload() {
                     let _ = shell::open(&handle_clone.shell_scope(), url, None);
                 }
+            });
+
+            let app_state = Arc::new(AppState {
+                pkce_verifier: Mutex::new(None),
             });
 
             app.manage(app_state);
@@ -576,7 +570,7 @@ fn main() {
             load_sheet_id,
             write_data_to_sheet,
             create_sheet_if_not_exists,
-            get_sheet_id
+            get_sheet_id,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

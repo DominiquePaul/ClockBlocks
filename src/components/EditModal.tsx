@@ -23,10 +23,10 @@ const TextItem: React.FC<TextItemProps> = ({ content, isInput, onChange }) => {
           placeholder="HH:MM"
           value={content.slice(0, 5)} // Restrict length to 5 characters
           onChange={(e) => onChange && onChange(e.target.value.slice(0, 5))} // Restrict length to 5 characters
-          className="w-full bg-transparent text-[#D9D9D9] font-inter text-sm font-normal leading-normal outline-none text-center"
+          className="w-full bg-transparent text-[#D9D9D9]  text-sm font-normal leading-normal outline-none text-center"
         />
       ) : (
-        <p className="text-[#D9D9D9] leading-trim text-edge-cap font-inter text-sm font-normal leading-normal text-center">{content}</p>
+        <p className="text-[#D9D9D9] leading-trim text-edge-cap  text-sm font-normal leading-normal text-center">{content}</p>
       )}
     </div>
   );
@@ -46,10 +46,10 @@ const formatTimeFromISO = (isoString: string) => {
 const SessionItem: React.FC<SessionItemProps> = ({ title, start, end }) => {
   return (
     <div className="flex justify-between items-center self-stretch">
-      <p className="text-[#D9D9D9] leading-trim text-edge-cap font-inter text-sm font-normal leading-normal">{title}</p>
+      <p className="text-[#D9D9D9] leading-trim text-edge-cap  text-sm font-normal leading-normal">{title}</p>
       <div className="flex items-center gap-2">
         <TextItem content={formatTimeFromISO(start)} isInput={false} />
-        <p className="text-[#D9D9D9] text-center leading-trim text-edge-cap font-inter text-sm font-normal leading-normal">-</p>
+        <p className="text-[#D9D9D9] text-center leading-trim text-edge-cap  text-sm font-normal leading-normal">-</p>
         <TextItem content={formatTimeFromISO(end)} isInput={false} />
       </div>
     </div>
@@ -337,10 +337,10 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
             <div className="flex flex-col items-center gap-8 self-stretch p-4">
                 <div className="flex flex-col items-start gap-8 self-stretch">
                     <div className="flex flex-col items-start gap-0 self-stretch">
-                        <p className="self-stretch text-[#D9D9D9] leading-trim text-edge-cap font-inter text-3xl font-normal leading-normal"> 
+                        <p className="self-stretch text-[#D9D9D9] leading-trim text-edge-cap  text-3xl font-normal leading-normal"> 
                             Session {sessionNumber}
                         </p>
-                        <p className="text-[rgba(255,255,255,0.50)] leading-trim text-edge-cap font-inter text-sm font-normal leading-normal self-stretch">
+                        <p className="text-[rgba(255,255,255,0.50)] leading-trim text-edge-cap  text-sm font-normal leading-normal self-stretch">
                             {new Date(sessionStart).toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })}
                         </p>
                     </div>
@@ -362,7 +362,7 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
 
                 <div className="flex flex-col items-start gap-8 self-stretch">
                     <div className="flex flex-col items-start gap-6 self-stretch">
-                        <p className="text-[#D9D9D9] leading-trim text-edge-cap font-inter text-xl font-normal leading-normal self-stretch">Make an edit</p>
+                        <p className="text-[#D9D9D9] leading-trim text-edge-cap  text-xl font-normal leading-normal self-stretch">Make an edit</p>
                         <div className="flex justify-between items-center self-stretch gap-4">
                             <Dropdown 
                                 options={timeBoxes.map(box => ({ id: box.id, name: box.name }))} // Pass both id and name
@@ -372,7 +372,7 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
                             />
                             <div className="flex items-center gap-2">
                                 <TextItem content={fromTime} isInput={true} onChange={setFromTime} />
-                                <p className="text-[#D9D9D9] text-center leading-trim text-edge-cap font-inter text-sm font-normal leading-normal">-</p>
+                                <p className="text-[#D9D9D9] text-center leading-trim text-edge-cap  text-sm font-normal leading-normal">-</p>
                                 <TextItem content={toTime} isInput={true} onChange={setToTime} />
                             </div>
                         </div>

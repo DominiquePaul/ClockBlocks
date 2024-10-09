@@ -77,8 +77,10 @@
         "providerShortName": null,
         "license": null,
         "entitlements": "entitlements.plist"
-
-      }
+      },
+      "resources": [
+          "../assets/fonts/**/*"
+      ]
     },
     "windows": [
       {

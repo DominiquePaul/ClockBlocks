@@ -71,7 +71,7 @@ export default function SortingPanel({
         <div className="flex w-full p-4 flex-col items-start gap-2 rounded-[14px] bg-black backdrop-blur-[40px]">
             <div className="flex w-full flex-col items-start gap-4">
                 <div className="flex justify-between items-center self-stretch">
-                    <p className="text-[#D9D9D9] leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-[14px] font-normal leading-normal">Group by</p>
+                    <p className="text-[#D9D9D9] leading-trim text-edge-cap text-[14px] font-normal leading-normal">Group by</p>
                     <Dropdown
                         options={[
                             { id: 'Week', name: 'Week' },
@@ -85,16 +85,16 @@ export default function SortingPanel({
                 </div>
 
                 <div className="flex justify-between items-center self-stretch">
-                    <p className="text-[#D9D9D9] leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-[14px] font-normal leading-normal">Bars show</p>
+                    <p className="text-[#D9D9D9] leading-trim text-edge-cap text-[14px] font-normal leading-normal">Bars show</p>
                     <div className="flex rounded border border-white border-opacity-10 overflow-hidden">
                         <button
-                            className={`px-3 py-1 text-sm font-[493] ${chartType === 'session' ? 'bg-white text-black' : 'bg-transparent text-white'}`}
+                            className={`px-3 py-1 text-sm ${chartType === 'session' ? 'bg-white text-black' : 'bg-transparent text-white'}`}
                             onClick={() => setChartType('session')}
                         >
                             Session
                         </button>
                         <button
-                            className={`px-3 py-1 text-sm font-[493] ${chartType === 'date' ? 'bg-white text-black' : 'bg-transparent text-white'}`}
+                            className={`px-3 py-1 text-sm ${chartType === 'date' ? 'bg-white text-black' : 'bg-transparent text-white'}`}
                             onClick={() => setChartType('date')}
                         >
                             Date
@@ -104,11 +104,11 @@ export default function SortingPanel({
 
                 <div className="flex justify-between items-center self-stretch h-[20px]">
                     {groupBy === 'All' ? (
-                        <p className="text-white text-center leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-sm font-[493] leading-normal w-full">All data</p>
+                        <p className="text-white text-center leading-trim text-edge-cap text-sm leading-normal w-full">All data</p>
                     ) : (
                         <>
                             <ArrowButton orientation="left" onClick={() => onPeriodChange('prev')} />
-                            <p className="text-white text-center leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-sm font-[493] leading-normal">{currentPeriod}</p>
+                            <p className="text-white text-center leading-trim text-edge-cap text-sm eading-normal">{currentPeriod}</p>
                             {!disableForwardNavigation ? (
                                 <ArrowButton orientation="right" onClick={() => onPeriodChange('next')} />
                             ) : (

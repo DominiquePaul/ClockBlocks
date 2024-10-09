@@ -279,7 +279,7 @@ function AppContent() {
                   </svg>
                 </div>
               </div>
-              <p className="px-2 text-center leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-[15px] font-[493] leading-normal tracking-[-0.3px] text-[#E8E8E8] w-20">{formatTime(activeSession.duration)}</p>
+              <p className="px-2 text-center leading-trim text-edge-cap text-[15px] eading-normal tracking-[-0.3px] text-[#E8E8E8] w-20">{formatTime(activeSession.duration)}</p>
             </button>
           </RoundedBox>
         )}

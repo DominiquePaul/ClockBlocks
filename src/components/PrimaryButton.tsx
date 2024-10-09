@@ -16,7 +16,7 @@ export default function PrimaryButton({ isActive, onClick, children, icon, isCli
   
   const textClasses = `${
     isActive ? 'text-black' : 'text-white'
-  } text-center leading-trim text-edge-cap font-tt-hoves-pro-trial-variable text-[15px] font-[493] leading-normal tracking-[-0.3px]`;
+  } text-center leading-trim text-edge-cap text-[14px] leading-normal tracking-[-0.3px]`;
 
 
   return (
