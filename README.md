@@ -36,13 +36,13 @@ The tech stack for this app is Tauri + React + TypeScript. Magic 🪄
 # Development
 
 Install packages
-`pnpm install`
+`npm install`
 
 Start development version
-`pnpm run tauri dev`
+`npm run tauri dev`
 
 Deploy app
-`pnpm run tauri build`
+`npm run tauri build`
 
 # Do you have a feature request?
 Or did you find a bug? 🐛
