@@ -3,7 +3,7 @@ import { X } from 'lucide-react'; // Import the X icon from Lucide
 import PrimaryButton from './PrimaryButton';
 import Dropdown from './DropDownButton';
 import { useState, useEffect } from 'react';
-import { getSessionEvents, getTimeBoxes, addSessionEvent, updateSessionEvent, deleteSessionEvent, startTransaction, commitTransaction, rollbackTransaction } from '../lib/dbInteraction';
+import { getSessionEvents, getTimeBoxes, upsertSessionEvent, deleteSessionEvent, startTransaction, commitTransaction, rollbackTransaction } from '../lib/dbInteraction';
 import { SessionEvent, TimeBox } from '../lib/types';
 import { useSession } from '../context/SessionContext';
 
@@ -66,8 +66,8 @@ interface EditModalProps {
 const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionNumber, onClose }) => {
     console.log("Session ID", sessionId);
     const { setSessionEvents } = useSession();
-    const [fromTime, setFromTime] = useState("");
-    const [toTime, setToTime] = useState("");
+    const [fromTime, setFromTime] = useState("n/a");
+    const [toTime, setToTime] = useState("n/a");
     const [selectedTimeBoxId, setSelectedTimeBoxId] = useState<string>(''); // State for selected time box
     const [selectedSessionEvents, setSelectedSessionEvents] = useState<(SessionEvent & { timeBoxName: string })[]>([]);
     
@@ -105,14 +105,13 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
         loadSessionEvents();
     }, [sessionId, timeBoxes]);
 
-    // New useEffect for setting fromTime and toTime
     useEffect(() => {
         console.log("Effect: fromTime and toTime");
         if (selectedSessionEvents.length > 0) {
-            if (fromTime === "") {
+            if (fromTime === "n/a") {
                 setFromTime(formatTimeFromISO(selectedSessionEvents[0].startDatetime));
             }
-            if (toTime === "") {
+            if (toTime === "n/a") {
                 const lastEvent = selectedSessionEvents[selectedSessionEvents.length - 1];
                 setToTime(lastEvent.endDatetime ? formatTimeFromISO(lastEvent.endDatetime) : "23:59");
             }
@@ -187,10 +186,24 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
         checkButtonActive();
     }, [selectedTimeBoxId, fromTime, toTime, selectedSessionEvents]);
 
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && isButtonActiveState) {
+                handleSave();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isButtonActiveState]);
+
     const handleSave = async () => {
         let eventIdsToDelete: string[] = [];
         let eventsToUpdate: SessionEvent[] = [];
-        let newEvents: Omit<SessionEvent, 'id'>[] = [];
+        let newEvents: SessionEvent[] = [];
 
         const startDatetime = new Date(selectedSessionEvents[0].startDatetime);
         const endDatetime = new Date(selectedSessionEvents[0].startDatetime);
@@ -237,7 +250,7 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
         });
 
         // Add the newly created event to the new events array
-        newEvents.push({ startDatetime: startDatetime.toISOString(), endDatetime: endDatetime.toISOString(), timeBoxId: selectedTimeBoxId, sessionId: selectedSessionEvents[0].sessionId, seconds: -1 });
+        newEvents.push({ id: '', startDatetime: startDatetime.toISOString(), endDatetime: endDatetime.toISOString(), timeBoxId: selectedTimeBoxId, sessionId: selectedSessionEvents[0].sessionId, seconds: -1 });
 
         // Calculate duration in seconds
         const calculateDuration = (start: string, end: string) => {
@@ -283,7 +296,7 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
 
             // Perform all database operations within the transaction
             for (const event of eventsToUpdate) {
-                await updateSessionEvent(event, transaction);
+                await upsertSessionEvent(event, transaction);
             }
 
             for (const id of eventIdsToDelete) {
@@ -291,24 +304,11 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
             }
 
             for (const event of newEvents) {
-                await addSessionEvent(event, transaction);
+                await upsertSessionEvent(event, transaction);
             }
 
             // Commit the transaction
             await commitTransaction(transaction);
-
-            // After successful transaction, fetch updated events
-            const updatedEvents = await getSessionEvents();
-
-            // Update the selected session events being shown and reset the dropdown, from time, and to time
-            const filteredEvents = updatedEvents
-                .filter(event => event.sessionId === sessionId)
-                .sort((a, b) => new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime())
-                .map(event => ({ ...event, timeBoxName: timeBoxes.find(box => box.id === event.timeBoxId)?.name || 'Unknown' }));
-            
-            setSessionEvents(updatedEvents);
-            setSelectedSessionEvents(filteredEvents);
-            setSelectedTimeBoxId(''); // Reset the dropdown
 
         } catch (error) {
             console.error("Error during save operation:", error);
@@ -321,11 +321,23 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
             // No need to release the connection, as it's managed by the pool
             // Just ensure the transaction is ended (either committed or rolled back)
         }
+
+         // After successful transaction, fetch updated events
+         const updatedEvents = await getSessionEvents();
+
+         // Update the selected session events being shown and reset the dropdown, from time, and to time
+         const filteredEvents = updatedEvents
+             .filter(event => event.sessionId === sessionId)
+             .sort((a, b) => new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime())
+             .map(event => ({ ...event, timeBoxName: timeBoxes.find(box => box.id === event.timeBoxId)?.name || 'Unknown' }));
+         
+         setSessionEvents(updatedEvents);
+         setSelectedSessionEvents(filteredEvents);
+         setSelectedTimeBoxId('');
     };
 
     return (
         <div className="flex p-6 pb-1 flex-col items-center rounded-2xl bg-black backdrop-blur-[40px] w-[420px] border border-[#5E5E5E] border-opacity-30 max-h-[90vh] overflow-y-auto relative">
-            {/* Close button */}
             <button 
                 onClick={onClose}
                 className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors duration-200"
@@ -337,10 +349,10 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
             <div className="flex flex-col items-center gap-8 self-stretch p-4">
                 <div className="flex flex-col items-start gap-8 self-stretch">
                     <div className="flex flex-col items-start gap-0 self-stretch">
-                        <p className="self-stretch text-[#D9D9D9] leading-trim text-edge-cap  text-3xl font-normal leading-normal"> 
+                        <p className="self-stretch text-[#D9D9D9] leading-trim text-edge-cap text-3xl font-normal leading-normal"> 
                             Session {sessionNumber}
                         </p>
-                        <p className="text-[rgba(255,255,255,0.50)] leading-trim text-edge-cap  text-sm font-normal leading-normal self-stretch">
+                        <p className="text-[rgba(255,255,255,0.50)] leading-trim text-edge-cap text-sm font-normal leading-normal self-stretch">
                             {new Date(sessionStart).toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })}
                         </p>
                     </div>
@@ -348,9 +360,9 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
                         {selectedSessionEvents.map((event, index) => (
                             <SessionItem 
                                 key={index} 
-                                title={event.timeBoxName ?? 'Unknown'} // Use nullish coalescing operator
+                                title={event.timeBoxName ?? 'Unknown'}
                                 start={event.startDatetime} 
-                                end={event.endDatetime ?? 'N/A'} // Use nullish coalescing operator
+                                end={event.endDatetime ?? 'N/A'}
                             />
                         ))}
                     </div>
@@ -362,17 +374,17 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
 
                 <div className="flex flex-col items-start gap-8 self-stretch">
                     <div className="flex flex-col items-start gap-6 self-stretch">
-                        <p className="text-[#D9D9D9] leading-trim text-edge-cap  text-xl font-normal leading-normal self-stretch">Make an edit</p>
+                        <p className="text-[#D9D9D9] leading-trim text-edge-cap text-xl font-normal leading-normal self-stretch">Make an edit</p>
                         <div className="flex justify-between items-center self-stretch gap-4">
                             <Dropdown 
-                                options={timeBoxes.map(box => ({ id: box.id, name: box.name }))} // Pass both id and name
+                                options={timeBoxes.map(box => ({ id: box.id, name: box.name }))}
                                 value={selectedTimeBoxId}
-                                onChange={(id) => setSelectedTimeBoxId(id)} // Update state with id on change
+                                onChange={(id) => setSelectedTimeBoxId(id)}
                                 textSize="text-sm" 
                             />
                             <div className="flex items-center gap-2">
                                 <TextItem content={fromTime} isInput={true} onChange={setFromTime} />
-                                <p className="text-[#D9D9D9] text-center leading-trim text-edge-cap  text-sm font-normal leading-normal">-</p>
+                                <p className="text-[#D9D9D9] text-center leading-trim text-edge-cap text-sm font-normal leading-normal">-</p>
                                 <TextItem content={toTime} isInput={true} onChange={setToTime} />
                             </div>
                         </div>

@@ -6,7 +6,7 @@ import ChartPage from './pages/ChartPage';
 import SettingsPage from './pages/SettingsPage';
 import NavigationBar from './components/NavigationBar';
 import { TimeBox, SessionEvent, Session, AuthToken } from "./lib/types";
-import { getTimeBoxes, getSessionEvents, addSessionEvent, upsertSession, maybeInitializeDatabase, startTransaction, commitTransaction, rollbackTransaction } from "./lib/dbInteraction";
+import { getTimeBoxes, getSessionEvents, upsertSessionEvent, upsertSession, maybeInitializeDatabase, startTransaction, commitTransaction, rollbackTransaction } from "./lib/dbInteraction";
 import { handleSyncData } from "./lib/writeToGSheet";
 import RoundedBox from "./components/RoundedBox";
 import { SessionProvider, useSession } from './context/SessionContext';
@@ -19,13 +19,20 @@ function AppContent() {
   const [activeBox, setActiveBox] = useState<string | null>(null);
   const [activePage, setActivePage] = useState('timer');
   const [activeSession, setActiveSession] = useState<Session>(createNewSession());
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     const initAuth = async () => {
-      const isValid = await checkAuthStatus();
-      setIsAuthenticated(isValid);
+      try {
+        const isValid = await invoke<boolean>('check_auth_token');
+        console.log('isValid', isValid);
+        setIsAuthenticated(isValid);
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+        setIsAuthenticated(false);
+      }
     };
+
     initAuth();
 
     const handleAuthResponse = (event: MessageEvent) => {
@@ -42,16 +49,6 @@ function AppContent() {
     window.addEventListener('message', handleAuthResponse);
     return () => window.removeEventListener('message', handleAuthResponse);
   }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      const isValid = await invoke('check_auth_token');
-      return isValid as boolean;
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      return false;
-    }
-  };
 
   const handleGoogleSignIn = async (): Promise<boolean> => {
     try {
@@ -110,19 +107,14 @@ function AppContent() {
     };
   }, []);
 
+  useEffect(() => {
+    updateTimeBoxes();
+  }, [sessionEvents])
+    
   // Event handlers
-  const handleTimeBoxClick = (id: string) => {
+  const handleTimeBoxClick = (activeId: string) => {
     const currentTime = new Date();
     const currentTimeISO = currentTime.toISOString();
-
-    const updateTimeBoxes = (activeId: string) => {
-      setTimeBoxes(prevTimeBoxes =>
-        prevTimeBoxes.map(timeBox => ({
-          ...timeBox,
-          isActive: timeBox.id === activeId
-        }))
-      );
-    };
 
     const createNewSessionEvent = (timeBoxId: string, startTime: string): SessionEvent => ({
       id: uuidv4(),
@@ -158,7 +150,7 @@ function AppContent() {
       try {
         db = await startTransaction();
         if (lastEvent) {
-          await addSessionEvent(lastEvent, db);
+          await upsertSessionEvent(lastEvent, db);
         }
         await upsertSession(session, db);
         await commitTransaction(db);
@@ -171,10 +163,17 @@ function AppContent() {
       }
     };
 
-    setActiveBox(id);
-    updateTimeBoxes(id);
+    setActiveBox(activeId);
     
-    const newSessionEvent = createNewSessionEvent(id, currentTimeISO);
+    setTimeBoxes(prevTimeBoxes =>
+      prevTimeBoxes.map(timeBox => ({
+        ...timeBox,
+        isActive: timeBox.id === activeId
+      }))
+    );
+
+    
+    const newSessionEvent = createNewSessionEvent(activeId, currentTimeISO);
     const updatedSessionEvents = updateSessionEventsOnBoxClick(newSessionEvent, currentTime);
     const updatedSession = updateSession(updatedSessionEvents, currentTimeISO);
     
@@ -219,7 +218,7 @@ function AppContent() {
 
     // Persist updated session event to disk
     const lastUpdatedEvent = updatedSessionEvents[updatedSessionEvents.length - 1];
-    addSessionEvent(lastUpdatedEvent)
+    upsertSessionEvent(lastUpdatedEvent)
     .then(() => console.log("Session event saved successfully"))
     .catch((error) => console.error("Failed to save session event:", error));
     
@@ -239,6 +238,11 @@ function AppContent() {
   };
 
   // Render
+  if (isAuthenticated === null) {
+    // You might want to show a loading indicator here
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="bg-black min-h-screen flex flex-col overflow-hidden">
       <div className="flex-grow flex flex-col w-full items-center overflow-auto mb-3 pt-min-[20px] pt-[6vh]">
@@ -326,12 +330,12 @@ function AppContent() {
 
   function updateTimers() {
     const currentTime = new Date();
-    updateTimeBoxes(currentTime);
+    updateTimeBoxes();
     updateOngoingSessionEvent(currentTime);
     updateActiveSession(currentTime);
   }
 
-  function updateTimeBoxes(currentTime: Date) {
+  function updateTimeBoxes() {
     setTimeBoxes(prevBoxes =>
       prevBoxes.map(timeBox => {
         const relevantEvents = sessionEvents.filter(event => 
@@ -339,7 +343,7 @@ function AppContent() {
         );
         const totalSeconds = relevantEvents.reduce((total, event) => {
           const startTime = new Date(event.startDatetime).getTime();
-          const endTime = event.endDatetime ? new Date(event.endDatetime).getTime() : currentTime.getTime();
+          const endTime = event.endDatetime ? new Date(event.endDatetime).getTime() : new Date().getTime();
           return total + Math.round((endTime - startTime) / 1000);
         }, 0);
         return {

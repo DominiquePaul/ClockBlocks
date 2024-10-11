@@ -78,6 +78,8 @@ async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandl
         .add_scope(Scope::new("https://www.googleapis.com/auth/spreadsheets".to_string()))
         .add_scope(Scope::new("https://www.googleapis.com/auth/drive".to_string()))
         .set_pkce_challenge(pkce_challenge)
+        .add_extra_param("access_type", "offline")  // Add this line
+        .add_extra_param("prompt", "consent")       // Add this line
         .url();
 
     // Store PKCE verifier
@@ -180,9 +182,17 @@ async fn load_auth_token(app_handle: tauri::AppHandle) -> Result<Option<AuthToke
 
 #[tauri::command]
 async fn check_auth_token(app_handle: tauri::AppHandle) -> Result<bool, String> {
-    if let Some(token) = load_auth_token(app_handle).await? {
+    if let Some(token) = load_auth_token(app_handle.clone()).await? {
         let now = Utc::now().timestamp() as u64;
-        Ok(now < token.expiry)
+        if now >= token.expiry {
+            // Token is expired, try to refresh it
+            match refresh_token(app_handle).await {
+                Ok(_) => Ok(true),
+                Err(_) => Ok(false)
+            }
+        } else {
+            Ok(true)
+        }
     } else {
         Ok(false)
     }
@@ -271,7 +281,7 @@ async fn refresh_token(app_handle: tauri::AppHandle) -> Result<AuthToken, String
         .exchange_refresh_token(&RefreshToken::new(current_token.refresh_token.clone()))
         .request_async(async_http_client)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Failed to refresh token: {}", e))?;
 
     let new_token = AuthToken {
         access_token: token_result.access_token().secret().to_string(),

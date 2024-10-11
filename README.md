@@ -1,6 +1,6 @@
-# Clock Blocks
+# ClockBlocks
 
-CB allows you to understand how you're splitting your time at work, working on a project or doing something completely different. 
+Understand how you're splitting your time at work, working on a project or doing something completely different. 
 
 For the last year I've been mostly working on my own. I'm worried about losing my edge and slacking off. If you're not working with somebody nobody will call you out for doing so. At the same time it's also easy to work your ass off, but not feel like you're moving somewhere. But things take time and knowing that I've continuously spent 9+ hours each day for the last month either coding or reading for a project gives me peace of mind when I then take a weekend off. 
 
@@ -21,17 +21,20 @@ Track your time by always assigning the time running to a block
 See the split for each session either across 1. all sessions or 2. by date. You can also find a table of each session or day here.
 
 ## Settings
-You can 1. define, rename or delete your blocks here and 2. link to a Google sheet to which your sessions will be synced. This is optional but you might find this useful (if you're such a time tracking nerd like me) to create additional plots or dig into the data yourself.
+
+Here you can 
+1. Create, rename or delete your blocks and 
+2. Sync your time blocks to a Google sheet. This is optional but you might find this useful (if you're such a time tracking nerd like me) to create additional plots or dig into the data yourself.
 
 # Roadmap
 
 - [x] User can estbalish a OAuth connection with Google Sheets so record is synced with a google sheet where they can create their own charts.
-- [ ] User can somehow make edits to tracked time. Most likely interface is that you get to rewrite
-- [ ] Charts: Show a Horizontal bar graph 
-- [ ] User can filter stats by date (or at least have a drop)
+- [x] User can somehow make edits to tracked time. Most likely interface is that you get to rewrite
+- [x] Charts: Show a Horizontal bar graph 
+- [x] User can filter stats by date 
 
 # Technical info 
-The tech stack for this app is Tauri + React + TypeScript. Magic 🪄
+The tech stack for this app is Tauri + React + TypeScript.
 
 # Development
 
