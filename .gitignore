@@ -1,5 +1,6 @@
 # Added by developer
 .env
+.env.production
 src-tauri/resources/google_client_secret.json
 src-tauri/resources/oauth.json
 

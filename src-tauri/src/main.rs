@@ -60,6 +60,15 @@ fn get_oauth_config() -> Result<(String, String, String, String), String> {
 #[tauri::command]
 async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandle) -> Result<String, String> {
     println!("Starting Google Sign-In process");
+    // let client_id = env::var("GOOGLE_CLIENT_ID").unwrap_or_else(|_| "Not set".to_string());
+    // let client_secret = env::var("GOOGLE_CLIENT_SECRET").unwrap_or_else(|_| "Not set".to_string());
+    // let auth_uri = env::var("GOOGLE_AUTH_URI").unwrap_or_else(|_| "Not set".to_string());
+    // let token_uri = env::var("GOOGLE_TOKEN_URI").unwrap_or_else(|_| "Not set".to_string());
+    // let popup_message = format!(
+    //     "Client ID: {}\nClient Secret: {}\nAuth URI: {}\nToken URI: {}",
+    //     client_id, client_secret, auth_uri, token_uri
+    // );
+    // window.eval(&format!("alert('{}');", popup_message)).unwrap();
 
     let (client_id, _, auth_uri, _) = get_oauth_config()?;
 
@@ -82,6 +91,8 @@ async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandl
         .add_extra_param("prompt", "consent")       // Add this line
         .url();
 
+
+
     // Store PKCE verifier
     let state: tauri::State<Arc<AppState>> = app_handle.state();
     if let Ok(mut verifier) = state.pkce_verifier.lock() {
@@ -93,7 +104,7 @@ async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandl
     // Store CSRF token and PKCE verifier for later use
     // You might want to use a more secure storage method
     window.set_title(&csrf_token.secret()).unwrap();
-    
+
     // Start a local server to handle the callback
     let (tx, rx) = channel();
     thread::spawn(move || {
@@ -118,12 +129,13 @@ async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandl
     
     // Try to open the URL using the system's default browser
     if let Err(e) = shell::open(&app_handle.shell_scope(), auth_url.to_string(), None) {
-        eprintln!("Failed to open browser using shell::open: {}", e);
+        eprintln!("Failed to open browser using shell::open: {}", e);        
         
         // Fallback: Try to open the URL using the window's API
         window.emit("open-external", auth_url.to_string())
             .map_err(|e| format!("Failed to emit open-external event: {}", e))?;
     }
+
 
     println!("Waiting for code from callback");
     let code = rx.recv().map_err(|e| format!("Failed to receive code: {}", e))?;
