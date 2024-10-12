@@ -1,6 +1,7 @@
 import SecondaryButton from "./SecondaryButton"
 import { formatSeconds } from "../lib/utils"
 import EditModal from './EditModal'
+import { useEffect } from 'react'
 
 function Divider(){
     return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 212 2" fill="none">
@@ -37,6 +38,21 @@ export default function ChartSessionPanel({ elements, isModalOpen, setIsModalOpe
     isModalOpen: boolean, 
     setIsModalOpen: (open: boolean) => void 
 }) {
+    // Add useEffect to handle keydown event
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            // Check if 'e' is pressed and data is selected
+            if (event.key === 'e' && elements.barData.length > 0) {
+                setIsModalOpen(true);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [setIsModalOpen, elements.barData]);
+
     const maxBarLength = Math.max(...elements.barData.map(element => element.time));
     const totalTime = elements.barData.reduce((total, element) => total + element.time, 0);
     return (

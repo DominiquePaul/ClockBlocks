@@ -15,6 +15,16 @@ interface TextItemProps {
 }
 
 const TextItem: React.FC<TextItemProps> = ({ content, isInput, onChange }) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const allowedKeys = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete'];
+    const isNumber = /^[0-9]$/.test(e.key);
+    const isColon = e.key === ':';
+
+    if (!isNumber && !isColon && !allowedKeys.includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <div className={`flex w-[50px] p-1 items-center justify-center rounded-md ${isInput ? 'bg-[#191919]' : ''}`}>
       {isInput ? (
@@ -23,10 +33,11 @@ const TextItem: React.FC<TextItemProps> = ({ content, isInput, onChange }) => {
           placeholder="HH:MM"
           value={content.slice(0, 5)} // Restrict length to 5 characters
           onChange={(e) => onChange && onChange(e.target.value.slice(0, 5))} // Restrict length to 5 characters
-          className="w-full bg-transparent text-[#D9D9D9]  text-sm font-normal leading-normal outline-none text-center"
+          onKeyDown={handleKeyDown}
+          className="w-full bg-transparent text-[#D9D9D9] text-sm font-normal leading-normal outline-none text-center"
         />
       ) : (
-        <p className="text-[#D9D9D9] leading-trim text-edge-cap  text-sm font-normal leading-normal text-center">{content}</p>
+        <p className="text-[#D9D9D9] leading-trim text-edge-cap text-sm font-normal leading-normal text-center">{content}</p>
       )}
     </div>
   );
