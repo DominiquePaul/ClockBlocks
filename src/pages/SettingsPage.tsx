@@ -269,8 +269,16 @@ function SettingsPage({
                     </div>
                   </div>
                 ) : (
-                  <div>
+                  <div className='flex flex-col gap-4'>
                     <p className="text-sm text-white text-center">No sync yet, press button to initiate.</p>
+                    <PrimaryButton
+                        isActive={true}
+                        onClick={handleSync}
+                        icon={<RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />}
+                        isClickable={true}
+                      >
+                        Sync Data
+                      </PrimaryButton>
                   </div>
                 )}
               </div>

@@ -210,9 +210,6 @@ async fn exchange_code_for_tokens(_window: tauri::Window, app_handle: tauri::App
     
     let (client_id, client_secret, _, token_uri) = get_oauth_config()?;
 
-    println!("Client ID: {}", client_id);
-    println!("Token URI: {}", token_uri);
-
     // Retrieve PKCE verifier
     let state: tauri::State<Arc<AppState>> = app_handle.state();
     let pkce_verifier = state.pkce_verifier.lock()
