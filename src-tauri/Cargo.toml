@@ -11,7 +11,7 @@ edition = "2021"
 tauri-build = { version = "1.2", features = [] }
 
 [dependencies]
-tauri = { version = "1.2", features = [ "shell-open", "fs-exists", "fs-copy-file", "fs-create-dir", "fs-write-file", "fs-read-file", "dialog-all", "fs-rename-file", "fs-remove-dir", "fs-read-dir", "fs-remove-file", "path-all"] }
+tauri = { version = "1.2", features = [ "fs-write-file", "fs-remove-dir", "fs-create-dir", "fs-rename-file", "fs-copy-file", "fs-read-dir", "fs-exists", "fs-remove-file", "dialog-all", "path-all", "shell-all", "fs-read-file"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tiny_http = "0.12"
@@ -24,9 +24,10 @@ reqwest = { version = "0.11", features = ["json"] }
 google-sheets4 = "*"
 hyper = { version = "0.14", features = ["full"] }
 hyper-rustls = { version = "0.24", features = ["http2"] }
-dotenv = "0.15.0"
 posthog-rs = "0.2.0"
 uuid = { version = "1.3.0", features = ["v4"] }
+log = "0.4"
+simplelog = "0.11"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

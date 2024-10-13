@@ -28,7 +28,6 @@ use oauth2::reqwest::async_http_client;
 use std::sync::{Arc, Mutex};
 use serde_json::json;
 use std::path::PathBuf;
-use dotenv::dotenv;
 use std::env;
 
 struct AppState {
@@ -43,19 +42,14 @@ struct AuthToken {
 }
 
 fn get_oauth_config() -> Result<(String, String, String, String), String> {
-    dotenv().ok(); // Load .env file if it exists
-
-    let client_id = env::var("GOOGLE_CLIENT_ID")
-        .map_err(|_| "GOOGLE_CLIENT_ID not set in environment".to_string())?;
-    let client_secret = env::var("GOOGLE_CLIENT_SECRET")
-        .map_err(|_| "GOOGLE_CLIENT_SECRET not set in environment".to_string())?;
-    let auth_uri = env::var("GOOGLE_AUTH_URI")
-        .unwrap_or_else(|_| "https://accounts.google.com/o/oauth2/auth".to_string());
-    let token_uri = env::var("GOOGLE_TOKEN_URI")
-        .unwrap_or_else(|_| "https://oauth2.googleapis.com/token".to_string());
+    let client_id = env!("GOOGLE_CLIENT_ID").to_string();
+    let client_secret = env!("GOOGLE_CLIENT_SECRET").to_string();
+    let auth_uri = option_env!("GOOGLE_AUTH_URI").unwrap_or("https://accounts.google.com/o/oauth2/auth").to_string();
+    let token_uri = option_env!("GOOGLE_TOKEN_URI").unwrap_or("https://oauth2.googleapis.com/token").to_string();
 
     Ok((client_id, client_secret, auth_uri, token_uri))
 }
+
 
 #[tauri::command]
 async fn start_google_sign_in(window: tauri::Window, app_handle: tauri::AppHandle) -> Result<String, String> {
