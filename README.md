@@ -6,7 +6,7 @@
 
 > "The bad news is time flies. The good news is you're the pilot." - Michael Altshuler
 
-Are you ready to take control of your time and skyrocket your productivity? Say hello to ClockBlocks, the revolutionary time-tracking app that turns your workday into a game of personal growth!
+Are you ready to take control of your time and understand whether how you spend oyur time is in line with your goals? Say hello to ClockBlocks, the time-tracking app that works like a Chess Clock and helps you understand how you spend your work day.
 
 ## 🚀 Why ClockBlocks?
 
@@ -16,18 +16,18 @@ In the world of remote work and self-employment, it's easy to lose track of time
 - 🏆 Gamify your productivity like a chess grandmaster
 - 📊 Get insights that actually help you improve
 
-ClockBlocks does all this and more, inspired by the precision of chess clocks and the flexibility you need in modern work.
+ClockBlocks does all this and more, inspired by a chess clock.
 
 ## ✨ Features That Set Us Apart
 
 ### 🧩 Block-Based Time Tracking
-Switch between customizable time blocks with a single click. No more fumbling with start/stop buttons!
+Switch between customizable time blocks with a single click. When one timer stops running another one starts.
 
 ### 📈 Insightful Dashboard
-Dive deep into your productivity patterns with beautiful, actionable visualizations.
+Understand how you spend your time
 
 ### 🔄 Seamless Google Sheets Integration
-For the data nerds (we love you!), sync your stats directly to Google Sheets for ultimate customization.
+For the data nerds (we love you!), sync your stats directly to Google Sheets to create customer charts and data portability.
 
 ### ⏳ No Pause Button
 Why? Because life doesn't have a pause button! Understand your true productivity, breaks included.
@@ -59,7 +59,7 @@ Why? Because life doesn't have a pause button! Understand your true productivity
 1. [Download ClockBlocks](https://github.com/DominiquePaul/ClockBlocks/releases)
 2. Install and launch
 3. Create your time blocks
-4. Start tracking and watch your productivity soar!
+4. Start tracking and understand whether your goals are in line with how you spend your time!
 
 ## 🗺️ Roadmap
 
