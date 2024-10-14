@@ -67,6 +67,7 @@ Why? Because life doesn't have a pause button! Understand your true productivity
 - [x] Time editing interface
 - [x] Date filtering for stats
 - [ ] More statistics
+- [ ] User can change order of time blocks
 - [ ] Delete button for sessions
 
 ## 🤝 Contribute
