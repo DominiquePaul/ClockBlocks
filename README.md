@@ -40,12 +40,12 @@ Why? Because life doesn't have a pause button! Understand your true productivity
 
 ### View statistics
 
-![ClockBlocks Interface](//images.ctfassets.net/2jl6ez2z7dm3/7tbaoXf7OjbfOWyd3Z1GkM/b61f6cf1d1f4ef8d7c259e404ae82792/ClockBlocks2.png)
+![ClockBlocks Interface](https://images.ctfassets.net/2jl6ez2z7dm3/7tbaoXf7OjbfOWyd3Z1GkM/b61f6cf1d1f4ef8d7c259e404ae82792/ClockBlocks2.png)
 
 
 ### Create your own time blocks and sync to google sheets
 
-![ClockBlocks Interface](//images.ctfassets.net/2jl6ez2z7dm3/7h9x7tIwK2yUpOiw98ozJu/3a54f77146b3142ca0a6198b713c42ec/ClockBlocks3.png)
+![ClockBlocks Interface](https://images.ctfassets.net/2jl6ez2z7dm3/7h9x7tIwK2yUpOiw98ozJu/3a54f77146b3142ca0a6198b713c42ec/ClockBlocks3.png)
 
 
 ## 🛠️ Built with Love and Cutting-Edge Tech
