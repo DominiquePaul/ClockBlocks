@@ -56,7 +56,7 @@ Why? Because life doesn't have a pause button! Understand your true productivity
 
 ## 🚀 Getting Started
 
-1. [Download ClockBlocks](https://github.com/YourUsername/ClockBlocks/releases)
+1. [Download ClockBlocks](https://github.com/dominiquecapaul/ClockBlocks/releases)
 2. Install and launch
 3. Create your time blocks
 4. Start tracking and watch your productivity soar!
@@ -81,4 +81,4 @@ Have questions? Reach out to us at [dominique.c.a.paul@gmail.com](mailto:dominiq
 
 Time is your most valuable asset. With ClockBlocks, make every second count! ⏱️💪
 
-[Download Now](https://github.com/YourUsername/ClockBlocks/releases)
+[Download Now](https://github.com/dominiquecapaul/ClockBlocks/releases)
