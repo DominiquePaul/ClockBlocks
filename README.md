@@ -1,53 +1,72 @@
-# ClockBlocks
+# 🕰️ ClockBlocks: Master Your Time, Maximize Your Potential
 
-Understand how you're splitting your time at work, working on a project or doing something completely different. 
+[![Twitter](https://img.shields.io/twitter/follow/YourTwitterHandle.svg?style=social)](https://twitter.com/dominiquecapaul)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://img.shields.io/github/downloads/YourUsername/ClockBlocks/total.svg)](https://github.com/YourUsername/ClockBlocks/releases)
 
-For the last year I've been mostly working on my own. I'm worried about losing my edge and slacking off. If you're not working with somebody nobody will call you out for doing so. At the same time it's also easy to work your ass off, but not feel like you're moving somewhere. But things take time and knowing that I've continuously spent 9+ hours each day for the last month either coding or reading for a project gives me peace of mind when I then take a weekend off. 
+> "Time is what we want most, but what we use worst." - William Penn
 
-But most time trackers don't allow you to understand how you're splitting your time, but only how much you've worked. Some allow you to create notes, but there aren't any that allow you to assign your time to buckets (at least I didn't find any). So I decided to build one myself.
+Are you ready to take control of your time and skyrocket your productivity? Say hello to ClockBlocks, the revolutionary time-tracking app that turns your workday into a game of personal growth!
 
-The idea is the following: Just like a chess clock you have multiple timers and when you activate one the other timer can't run. In Clock Blocks the timer is going up, opposed to a chess clock where you're counting down. All you have to do is click on the time block to activate it. Once you activate a block no other block can run. 
+## 🚀 Why ClockBlocks?
 
-There's no pause button. This is the point of this app. You want to understand how your break time compares to your work time. If you keep pausing your work timer for breaks you'll never know how efficiently you really spent your working time. Sometimes taking a break will actually make you finish a task sooner. The only thing you can do is stop a session. The way I think about sessions is that one "session" is one work day. But you can use it as you like. 
+In the world of remote work and self-employment, it's easy to lose track of time. But what if you could:
 
-Anyhow, I hope you also find joy in this app. You can download it here [COMING SOON] if you want to give it a go!
+- 🎯 Visualize your time allocation across different tasks
+- 🏆 Gamify your productivity like a chess grandmaster
+- 📊 Get insights that actually help you improve
 
-# Features
+ClockBlocks does all this and more, inspired by the precision of chess clocks and the flexibility you need in modern work.
 
-## Time Tracking
-Track your time by always assigning the time running to a block
+## ✨ Features That Set Us Apart
 
-## Dashboard
-See the split for each session either across 1. all sessions or 2. by date. You can also find a table of each session or day here.
+### 🧩 Block-Based Time Tracking
+Switch between customizable time blocks with a single click. No more fumbling with start/stop buttons!
 
-## Settings
+### 📈 Insightful Dashboard
+Dive deep into your productivity patterns with beautiful, actionable visualizations.
 
-Here you can 
-1. Create, rename or delete your blocks and 
-2. Sync your time blocks to a Google sheet. This is optional but you might find this useful (if you're such a time tracking nerd like me) to create additional plots or dig into the data yourself.
+### 🔄 Seamless Google Sheets Integration
+For the data nerds (we love you!), sync your stats directly to Google Sheets for ultimate customization.
 
-# Roadmap
+### ⏳ No Pause Button
+Why? Because life doesn't have a pause button! Understand your true productivity, breaks included.
 
-- [x] User can estbalish a OAuth connection with Google Sheets so record is synced with a google sheet where they can create their own charts.
-- [x] User can somehow make edits to tracked time. Most likely interface is that you get to rewrite
-- [x] Charts: Show a Horizontal bar graph 
-- [x] User can filter stats by date 
+## 🖥️ Sleek, Intuitive Interface
 
-# Technical info 
-The tech stack for this app is Tauri + React + TypeScript.
+![ClockBlocks Interface](https://images.ctfassets.net/2jl6ez2z7dm3/7DWQHXQg7ueWIcjFZ2FDkd/da1aaf31813091384c310c19e862e6d6/ClockBlocks1.png)
 
-# Development
+## 🛠️ Built with Love and Cutting-Edge Tech
 
-Install packages
-`npm install`
+- Frontend: React + TypeScript
+- Backend: Rust
+- Framework: Tauri
 
-Start development version
-`npm run tauri dev`
+## 🚀 Getting Started
 
-Deploy app
-`npm run tauri build`
+1. [Download ClockBlocks](https://github.com/YourUsername/ClockBlocks/releases)
+2. Install and launch
+3. Create your time blocks
+4. Start tracking and watch your productivity soar!
 
-# Do you have a feature request?
-Or did you find a bug? 🐛
+## 🗺️ Roadmap
 
-Then either open an issue, create a pull request or shoot me an [email](mailto:dominique.c.a.paul@gmail.com)! I'd love to hear from you.
+- [x] Google Sheets OAuth integration
+- [x] Time editing interface
+- [x] Date filtering for stats
+- [ ] More statistics
+- [ ] Delete button for sessions
+
+## 🤝 Contribute
+
+Found a bug? Have an idea? We'd love to hear from you! Open an issue or create a pull request.
+
+## 📬 Get in Touch
+
+Have questions? Reach out to us at [dominique.c.a.paul@gmail.com](mailto:dominique.c.a.paul@gmail.com)
+
+---
+
+Time is your most valuable asset. With ClockBlocks, make every second count! ⏱️💪
+
+[Download Now](https://github.com/YourUsername/ClockBlocks/releases)
