@@ -1,8 +1,8 @@
 # 🕰️ ClockBlocks: Master Your Time, Maximize Your Potential
 
-[![Twitter](https://img.shields.io/twitter/follow/YourTwitterHandle.svg?style=social)](https://twitter.com/dominiquecapaul)
+[![Twitter](https://img.shields.io/twitter/follow/dominiquecapaul.svg?style=social)](https://twitter.com/dominiquecapaul)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Downloads](https://img.shields.io/github/downloads/YourUsername/ClockBlocks/total.svg)](https://github.com/DominiquePaul/ClockBlocks/releases)
+[![Downloads](https://img.shields.io/github/downloads/DominiquePaul/ClockBlocks/total.svg)](https://github.com/DominiquePaul/ClockBlocks/releases)
 
 > "The bad news is time flies. The good news is you're the pilot." - Michael Altshuler
 
@@ -40,12 +40,12 @@ Why? Because life doesn't have a pause button! Understand your true productivity
 
 ### View statistics
 
-![ClockBlocks Interface](https://images.ctfassets.net/2jl6ez2z7dm3/7DWQHXQg7ueWIcjFZ2FDkd/da1aaf31813091384c310c19e862e6d6/ClockBlocks2.png)
+![ClockBlocks Interface](//images.ctfassets.net/2jl6ez2z7dm3/7tbaoXf7OjbfOWyd3Z1GkM/b61f6cf1d1f4ef8d7c259e404ae82792/ClockBlocks2.png)
 
 
 ### Create your own time blocks and sync to google sheets
 
-![ClockBlocks Interface](https://images.ctfassets.net/2jl6ez2z7dm3/7DWQHXQg7ueWIcjFZ2FDkd/da1aaf31813091384c310c19e862e6d6/ClockBlocks3.png)
+![ClockBlocks Interface](//images.ctfassets.net/2jl6ez2z7dm3/7h9x7tIwK2yUpOiw98ozJu/3a54f77146b3142ca0a6198b713c42ec/ClockBlocks3.png)
 
 
 ## 🛠️ Built with Love and Cutting-Edge Tech
