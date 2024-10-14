@@ -2,9 +2,9 @@
 
 [![Twitter](https://img.shields.io/twitter/follow/YourTwitterHandle.svg?style=social)](https://twitter.com/dominiquecapaul)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Downloads](https://img.shields.io/github/downloads/YourUsername/ClockBlocks/total.svg)](https://github.com/YourUsername/ClockBlocks/releases)
+[![Downloads](https://img.shields.io/github/downloads/YourUsername/ClockBlocks/total.svg)](https://github.com/DominiquePaul/ClockBlocks/releases)
 
-> "Time is what we want most, but what we use worst." - William Penn
+> "The bad news is time flies. The good news is you're the pilot." - Michael Altshuler
 
 Are you ready to take control of your time and skyrocket your productivity? Say hello to ClockBlocks, the revolutionary time-tracking app that turns your workday into a game of personal growth!
 
@@ -34,7 +34,19 @@ Why? Because life doesn't have a pause button! Understand your true productivity
 
 ## 🖥️ Sleek, Intuitive Interface
 
+### Track your time
+
 ![ClockBlocks Interface](https://images.ctfassets.net/2jl6ez2z7dm3/7DWQHXQg7ueWIcjFZ2FDkd/da1aaf31813091384c310c19e862e6d6/ClockBlocks1.png)
+
+### View statistics
+
+![ClockBlocks Interface](https://images.ctfassets.net/2jl6ez2z7dm3/7DWQHXQg7ueWIcjFZ2FDkd/da1aaf31813091384c310c19e862e6d6/ClockBlocks2.png)
+
+
+### Create your own time blocks and sync to google sheets
+
+![ClockBlocks Interface](https://images.ctfassets.net/2jl6ez2z7dm3/7DWQHXQg7ueWIcjFZ2FDkd/da1aaf31813091384c310c19e862e6d6/ClockBlocks3.png)
+
 
 ## 🛠️ Built with Love and Cutting-Edge Tech
 
