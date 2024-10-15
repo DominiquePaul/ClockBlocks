@@ -14,6 +14,105 @@ interface TextItemProps {
   onChange?: (value: string) => void;
 }
 
+
+
+function getFirstAndLastEventDatetime(selectedSessionEvents: SessionEvent[]) {
+    const eventStartTimes = selectedSessionEvents.map(event => new Date(event.startDatetime));
+    const eventEndTimes = selectedSessionEvents.map(event => new Date(event.endDatetime || new Date().toISOString()));
+    const firstEventStart = new Date(Math.min(...eventStartTimes.map(date => date.getTime())));
+    const lastEventEnd = new Date(Math.max(...eventEndTimes.map(date => date.getTime())));
+    return { firstEventStart, lastEventEnd };
+}
+
+
+function doesOverlapExist(candidateStart: Date, candidateEnd: Date, firstEventStart: Date, lastEventEnd: Date){
+    if (candidateStart > lastEventEnd || candidateEnd < firstEventStart){
+        return false;
+    }
+    return true;
+}
+
+function timeStringToDate(timeStringStart: string, timeStringEnd: string, selectedSessionEvents: SessionEvent[]): [Date | null, Date | null] {
+  const convertLocalHourToUTC = (localHour: number): number => {
+      const localDate = new Date();
+      localDate.setHours(localHour);
+      const utcHour = localDate.getUTCHours();
+      console.log("Local hour", localHour, "UTC hour", utcHour);
+      return utcHour;
+  };
+  const { firstEventStart, lastEventEnd } = getFirstAndLastEventDatetime(selectedSessionEvents);
+  let [hoursStart, minutesStart] = timeStringStart.split(':').map(Number);
+  let [hoursEnd, minutesEnd] = timeStringEnd.split(':').map(Number);
+  hoursStart = convertLocalHourToUTC(hoursStart);
+  hoursEnd = convertLocalHourToUTC(hoursEnd);
+  console.log("Time string start", timeStringStart, "UTC hour:", hoursStart);
+  console.log("Time string end", timeStringEnd, "UTC hour:", hoursEnd);
+
+  console.log("First event start", firstEventStart.toISOString());
+  console.log("Last event end", lastEventEnd.toISOString());
+
+  if (hoursStart > hoursEnd){
+    console.log("Different days");
+    let startDate = new Date(firstEventStart); 
+    let endDate = new Date(firstEventStart);
+    endDate.setUTCDate(endDate.getUTCDate() + 1); // Set endDate to be 1 day after startDate
+    startDate.setUTCHours(hoursStart, minutesStart, 0, 0);
+    endDate.setUTCHours(hoursEnd, minutesEnd, 0, 0);
+    console.log("Start date", startDate.toISOString());
+    console.log("End date", endDate.toISOString());
+    const overlapExists = doesOverlapExist(startDate, endDate, firstEventStart, lastEventEnd);
+    if (overlapExists){
+        return [startDate, endDate];
+    }
+    else {
+        return [null, null];
+    }
+  } else if (firstEventStart.getUTCDate() === lastEventEnd.getUTCDate()){
+        console.log("Same day");
+        let startDate = new Date(firstEventStart); 
+        let endDate = new Date(firstEventStart);
+        startDate.setUTCHours(hoursStart, minutesStart, 0, 0);
+        endDate.setUTCHours(hoursEnd, minutesEnd, 0, 0);
+        const overlapExists = doesOverlapExist(startDate, endDate, firstEventStart, lastEventEnd);
+        if (overlapExists){
+            return [startDate, endDate];
+        }
+        else {
+            return [null, null];
+        }
+  } else {
+    console.log("Same day");
+    let startDateA = new Date(firstEventStart); 
+    let endDateA = new Date(firstEventStart);
+    startDateA.setUTCHours(hoursStart, minutesStart, 0, 0);
+    endDateA.setUTCHours(hoursEnd, minutesEnd, 0, 0);
+    const optionAWorks = doesOverlapExist(startDateA, endDateA, firstEventStart, lastEventEnd);
+    console.log("Start date A", startDateA.toISOString());
+    console.log("End date A", endDateA.toISOString());
+    console.log("Option A works", optionAWorks);
+
+    let startDateB = new Date(lastEventEnd); 
+    let endDateB = new Date(lastEventEnd);
+    startDateB.setUTCHours(hoursStart, minutesStart, 0, 0);
+    endDateB.setUTCHours(hoursEnd, minutesEnd, 0, 0);
+    const optionBWorks = doesOverlapExist(startDateB, endDateB, firstEventStart, lastEventEnd);
+    
+    console.log("Start date B", startDateB.toISOString());
+    console.log("End date B", endDateB.toISOString());
+    console.log("Option B works", optionBWorks);
+
+    if (optionAWorks && !optionBWorks){
+        return [startDateA, endDateA];
+    }
+    else if (!optionAWorks && optionBWorks){
+        return [startDateB, endDateB];
+    }
+    else {
+        return [null, null];
+    }
+  }
+}
+
 const TextItem: React.FC<TextItemProps> = ({ content, isInput, onChange }) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const allowedKeys = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete'];
@@ -131,22 +230,12 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
 
     useEffect(() => {
         const checkButtonActive = () => {
-            console.log("Selected time box ID", selectedTimeBoxId);
-            console.log("From time", fromTime);
-            console.log("To time", toTime);
-            console.log("Selected session events", selectedSessionEvents);
-            console.log("Time boxes", timeBoxes);
-            console.log("Session start", sessionStart);
-            console.log("Session ID", sessionId);
-            console.log("Session number", sessionNumber);
-
-
-            if (selectedTimeBoxId === '') {
-                console.log("Selected time box ID is empty");
+            if (!selectedTimeBoxId) {
+                setWarningMessage('Please select a time box to reassign time frame too.');
                 setIsButtonActiveState(false);
                 return;
             }
-
+            
             // Check if both fromTime and toTime are complete
             if (!fromTime || !toTime || fromTime.length < 4 || toTime.length < 4) {
                 console.log("From-time to-time not long enough.");
@@ -154,44 +243,26 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
                 // setWarningMessage('');
                 return;
             }
+            const isValidTimeFormat = (time: string): boolean => {
+                const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+                return timePattern.test(time);
+            };
 
-            const eventStartTimes = selectedSessionEvents.map(event => new Date(event.startDatetime));
-            const eventEndTimes = selectedSessionEvents.map(event => new Date(event.endDatetime || new Date().toISOString()));
-            const firstEventStart = new Date(Math.min(...eventStartTimes.map(date => date.getTime())));
-            const lastEventEnd = new Date(Math.max(...eventEndTimes.map(date => date.getTime())));
-
-            const [startHours, startMinutes] = fromTime.split(':').map(Number);
-            const [endHours, endMinutes] = toTime.split(':').map(Number);
-
-            const enteredStartTime = new Date(firstEventStart);
-            enteredStartTime.setHours(startHours, startMinutes, 0, 0);
-
-            const enteredEndTime = new Date(firstEventStart);
-            enteredEndTime.setHours(endHours, endMinutes, 0, 0);
-
-            if (enteredEndTime <= enteredStartTime) {
-                setWarningMessage('End time must be later than start time.');
+            if (!isValidTimeFormat(fromTime) || !isValidTimeFormat(toTime)) {
+                setWarningMessage('Invalid time format. Please use HH:MM format.');
                 setIsButtonActiveState(false);
                 return;
             }
+            const [enteredStartTime, enteredEndTime] = timeStringToDate(fromTime, toTime, selectedSessionEvents);
 
-            if (enteredEndTime < firstEventStart) {
-                setWarningMessage('New end time cannot be earlier than the start of first event.');
+            if (enteredStartTime === null || enteredEndTime === null){
+                setWarningMessage('Invalid time range. New time must overlap.');
                 setIsButtonActiveState(false);
                 return;
+            } else {
+                setWarningMessage('');
+                setIsButtonActiveState(true);
             }
-
-            console.log("Last event end", lastEventEnd.toISOString());
-            console.log("Entered start time", enteredStartTime.toISOString());
-
-            if (enteredStartTime > lastEventEnd) {
-                setWarningMessage('Start time cannot be later than the end of the last event.');
-                setIsButtonActiveState(false);
-                return;
-            }
-
-            setWarningMessage('');
-            setIsButtonActiveState(true);
         };
 
         checkButtonActive();
@@ -216,14 +287,11 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
         let eventsToUpdate: SessionEvent[] = [];
         let newEvents: SessionEvent[] = [];
 
-        const startDatetime = new Date(selectedSessionEvents[0].startDatetime);
-        const endDatetime = new Date(selectedSessionEvents[0].startDatetime);
-
-        const [startHours, startMinutes] = fromTime.split(':').map(Number);
-        const [endHours, endMinutes] = toTime.split(':').map(Number);
-
-        startDatetime.setHours(startHours, startMinutes, 0, 0);
-        endDatetime.setHours(endHours, endMinutes, 0, 0);
+        const [startDatetime, endDatetime] = timeStringToDate(fromTime, toTime, selectedSessionEvents);
+        if (!startDatetime || !endDatetime) {
+            console.error("Start and end datetime cannot be null.");
+            return;
+        }
 
         selectedSessionEvents.forEach(event => {
             const eventStartDatetime = new Date(event.startDatetime);
@@ -296,9 +364,9 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
         });
 
         // log to check if everythingis correct
-        console.log("Events to update", eventsToUpdate);
-        console.log("Events to delete", eventIdsToDelete);
-        console.log("New events", newEvents);
+        // console.log("Events to update", eventsToUpdate);
+        // console.log("Events to delete", eventIdsToDelete);
+        // console.log("New events", newEvents);
         
         let transaction;
         try {

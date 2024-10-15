@@ -1,9 +1,5 @@
 function Box({ name, seconds, isActive, onClick, color }: { name: string; seconds: string; isActive: boolean; onClick: () => void, color: string }) {
 
-  if (isActive) {
-    console.log(color);
-  }
-
   return (  
     <div 
       onClick={onClick} 
