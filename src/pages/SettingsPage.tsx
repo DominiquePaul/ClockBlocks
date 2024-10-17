@@ -28,8 +28,8 @@ function SettingsPage({
     const [isSyncing, setIsSyncing] = useState(false);
     const [activeColorPicker, setActiveColorPicker] = useState<string | null>(null);
 
-    console.log(timeBoxes);
-    console.log(sheetURL);
+    // console.log(timeBoxes);
+    // console.log(sheetURL);
 
     // Colours old
     // const colours = ['#77C8FF', '#FAFF07', '#FF6E3D', '#F448ED', '#6EEB4E', '#F42E2D', '#9747FF', '#FFA500'];

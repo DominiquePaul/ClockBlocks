@@ -281,7 +281,7 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
 
 
     const handleBarClick = (data: any, _: number) => {
-        console.log(data);
+        // console.log(data);
         const barData = Object.entries(data)
             .filter(([key, value]) => 
                 key !== 'name' && 

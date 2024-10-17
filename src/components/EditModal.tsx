@@ -33,83 +33,89 @@ function doesOverlapExist(candidateStart: Date, candidateEnd: Date, firstEventSt
 }
 
 function timeStringToDate(timeStringStart: string, timeStringEnd: string, selectedSessionEvents: SessionEvent[]): [Date | null, Date | null] {
-  const convertLocalHourToUTC = (localHour: number): number => {
-      const localDate = new Date();
-      localDate.setHours(localHour);
-      const utcHour = localDate.getUTCHours();
-      console.log("Local hour", localHour, "UTC hour", utcHour);
-      return utcHour;
-  };
+  console.log("Starting timeStringToDate function");
+  console.log("Input - timeStringStart:", timeStringStart, "timeStringEnd:", timeStringEnd);
+  
   const { firstEventStart, lastEventEnd } = getFirstAndLastEventDatetime(selectedSessionEvents);
-  let [hoursStart, minutesStart] = timeStringStart.split(':').map(Number);
-  let [hoursEnd, minutesEnd] = timeStringEnd.split(':').map(Number);
-  hoursStart = convertLocalHourToUTC(hoursStart);
-  hoursEnd = convertLocalHourToUTC(hoursEnd);
-  console.log("Time string start", timeStringStart, "UTC hour:", hoursStart);
-  console.log("Time string end", timeStringEnd, "UTC hour:", hoursEnd);
+  console.log("First event start (UTC):", firstEventStart.toUTCString(), "Last event end (UTC):", lastEventEnd.toUTCString());
+  
+  const parseTime = (timeString: string): [number, number] => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return [hours, minutes];
+  };
 
-  console.log("First event start", firstEventStart.toISOString());
-  console.log("Last event end", lastEventEnd.toISOString());
+  let [hoursStart, minutesStart] = parseTime(timeStringStart);
+  let [hoursEnd, minutesEnd] = parseTime(timeStringEnd);
+  console.log("Parsed times - Start:", hoursStart, ":", minutesStart, "End:", hoursEnd, ":", minutesEnd);
 
-  if (hoursStart > hoursEnd){
-    console.log("Different days");
-    let startDate = new Date(firstEventStart); 
-    let endDate = new Date(firstEventStart);
-    endDate.setUTCDate(endDate.getUTCDate() + 1); // Set endDate to be 1 day after startDate
-    startDate.setUTCHours(hoursStart, minutesStart, 0, 0);
-    endDate.setUTCHours(hoursEnd, minutesEnd, 0, 0);
-    console.log("Start date", startDate.toISOString());
-    console.log("End date", endDate.toISOString());
-    const overlapExists = doesOverlapExist(startDate, endDate, firstEventStart, lastEventEnd);
-    if (overlapExists){
-        return [startDate, endDate];
+  const createDate = (baseDate: Date, hours: number, minutes: number): Date => {
+    const date = new Date(baseDate);
+    date.setUTCHours(hours, minutes, 0, 0);
+    return date;
+  };
+
+  const adjustDateIfNeeded = (date: Date, referenceDate: Date): Date => {
+    if (date < referenceDate) {
+      date.setUTCDate(date.getUTCDate() + 1);
+      console.log("Date adjusted to next day (UTC):", date.toUTCString());
     }
-    else {
-        return [null, null];
+    return date;
+  };
+  
+  // Get the delta in hours between the current timezone and UTC
+  const getTimezoneOffset = (): number => {
+    const now = new Date();
+    const offsetMinutes = now.getTimezoneOffset();
+    return -offsetMinutes / 60; // Convert to hours and invert the sign
+  };
+
+  const timezoneOffsetHours = getTimezoneOffset();
+  console.log("Timezone offset (hours):", timezoneOffsetHours);
+
+  hoursStart = (hoursStart - timezoneOffsetHours + 24) % 24;
+  hoursEnd = (hoursEnd - timezoneOffsetHours + 24) % 24;
+  console.log("Adjusted start and end hours:", hoursStart, hoursEnd);
+
+  // Try creating dates based on the first event start
+  let startDate = createDate(firstEventStart, hoursStart, minutesStart);
+  let endDate = createDate(firstEventStart, hoursEnd, minutesEnd);
+  console.log("Initial dates - Start (UTC):", startDate.toUTCString(), "End (UTC):", endDate.toUTCString());
+
+  // If end time is earlier than start time, assume it's the next day
+  if (endDate <= startDate) {
+    endDate = adjustDateIfNeeded(endDate, startDate);
+    console.log("End date adjusted (UTC):", endDate.toUTCString());
+  }
+
+  // Check if the time range overlaps with the existing events
+  if (!doesOverlapExist(startDate, endDate, firstEventStart, lastEventEnd)) {
+    console.log("No overlap found, trying to shift dates");
+    // If no overlap, try shifting both dates back by one day
+    startDate.setUTCDate(startDate.getUTCDate() - 1);
+    endDate.setUTCDate(endDate.getUTCDate() - 1);
+    console.log("Shifted dates back - Start (UTC):", startDate.toUTCString(), "End (UTC):", endDate.toUTCString());
+
+    // If still no overlap, try shifting both dates forward by one day from the original position
+    if (!doesOverlapExist(startDate, endDate, firstEventStart, lastEventEnd)) {
+      console.log("Still no overlap, shifting dates forward");
+      startDate = createDate(firstEventStart, hoursStart, minutesStart);
+      endDate = createDate(firstEventStart, hoursEnd, minutesEnd);
+      startDate.setUTCDate(startDate.getUTCDate() + 1);
+      endDate.setUTCDate(endDate.getUTCDate() + 1);
+      if (endDate <= startDate) {
+        endDate = adjustDateIfNeeded(endDate, startDate);
+      }
+      console.log("Final shifted dates - Start (UTC):", startDate.toUTCString(), "End (UTC):", endDate.toUTCString());
     }
-  } else if (firstEventStart.getUTCDate() === lastEventEnd.getUTCDate()){
-        console.log("Same day");
-        let startDate = new Date(firstEventStart); 
-        let endDate = new Date(firstEventStart);
-        startDate.setUTCHours(hoursStart, minutesStart, 0, 0);
-        endDate.setUTCHours(hoursEnd, minutesEnd, 0, 0);
-        const overlapExists = doesOverlapExist(startDate, endDate, firstEventStart, lastEventEnd);
-        if (overlapExists){
-            return [startDate, endDate];
-        }
-        else {
-            return [null, null];
-        }
+  }
+
+  // Final check for overlap
+  if (doesOverlapExist(startDate, endDate, firstEventStart, lastEventEnd)) {
+    console.log("Overlap found, returning dates - Start (UTC):", startDate.toUTCString(), "End (UTC):", endDate.toUTCString());
+    return [startDate, endDate];
   } else {
-    console.log("Same day");
-    let startDateA = new Date(firstEventStart); 
-    let endDateA = new Date(firstEventStart);
-    startDateA.setUTCHours(hoursStart, minutesStart, 0, 0);
-    endDateA.setUTCHours(hoursEnd, minutesEnd, 0, 0);
-    const optionAWorks = doesOverlapExist(startDateA, endDateA, firstEventStart, lastEventEnd);
-    console.log("Start date A", startDateA.toISOString());
-    console.log("End date A", endDateA.toISOString());
-    console.log("Option A works", optionAWorks);
-
-    let startDateB = new Date(lastEventEnd); 
-    let endDateB = new Date(lastEventEnd);
-    startDateB.setUTCHours(hoursStart, minutesStart, 0, 0);
-    endDateB.setUTCHours(hoursEnd, minutesEnd, 0, 0);
-    const optionBWorks = doesOverlapExist(startDateB, endDateB, firstEventStart, lastEventEnd);
-    
-    console.log("Start date B", startDateB.toISOString());
-    console.log("End date B", endDateB.toISOString());
-    console.log("Option B works", optionBWorks);
-
-    if (optionAWorks && !optionBWorks){
-        return [startDateA, endDateA];
-    }
-    else if (!optionAWorks && optionBWorks){
-        return [startDateB, endDateB];
-    }
-    else {
-        return [null, null];
-    }
+    console.log("No overlap found after all attempts, returning null");
+    return [null, null];
   }
 }
 
@@ -121,8 +127,11 @@ const TextItem: React.FC<TextItemProps> = ({ content, isInput, onChange }) => {
 
     if (!isNumber && !isColon && !allowedKeys.includes(e.key)) {
       e.preventDefault();
+      console.log("Key prevented:", e.key);
     }
   };
+
+//   console.log("Rendering TextItem - isInput:", isInput, "content:", content);
 
   return (
     <div className={`flex w-[50px] p-1 items-center justify-center rounded-md ${isInput ? 'bg-[#191919]' : ''}`}>
@@ -131,7 +140,10 @@ const TextItem: React.FC<TextItemProps> = ({ content, isInput, onChange }) => {
           type="text"
           placeholder="HH:MM"
           value={content.slice(0, 5)} // Restrict length to 5 characters
-          onChange={(e) => onChange && onChange(e.target.value.slice(0, 5))} // Restrict length to 5 characters
+          onChange={(e) => {
+            console.log("Input changed:", e.target.value);
+            onChange && onChange(e.target.value.slice(0, 5));
+          }}
           onKeyDown={handleKeyDown}
           className="w-full bg-transparent text-[#D9D9D9] text-sm font-normal leading-normal outline-none text-center"
         />
@@ -174,7 +186,7 @@ interface EditModalProps {
 }
 
 const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionNumber, onClose }) => {
-    console.log("Session ID", sessionId);
+    // console.log("Session ID", sessionId);
     const { setSessionEvents } = useSession();
     const [fromTime, setFromTime] = useState("n/a");
     const [toTime, setToTime] = useState("n/a");
@@ -288,6 +300,7 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
         let newEvents: SessionEvent[] = [];
 
         const [startDatetime, endDatetime] = timeStringToDate(fromTime, toTime, selectedSessionEvents);
+        console.log("Overwrite:     Start datetime:", startDatetime, " | ", "End datetime:", endDatetime, " | ", "Selected timebox ID:", selectedTimeBoxId);
         if (!startDatetime || !endDatetime) {
             console.error("Start and end datetime cannot be null.");
             return;
