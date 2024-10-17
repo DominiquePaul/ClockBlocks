@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://img.shields.io/github/downloads/DominiquePaul/ClockBlocks/total.svg)](https://github.com/DominiquePaul/ClockBlocks/releases)
 
+[![Download Clockblocks](https://custom-icon-badges.demolab.com/badge/-Download-blue?style=for-the-badge&logo=download&logoColor=white "Download zip")](https://github.com/DominiquePaul/ClockBlocks/releases)
+
 > "The bad news is time flies. The good news is you're the pilot." - Michael Altshuler
 
 Are you ready to take control of your time and understand whether how you spend oyur time is in line with your goals? Say hello to ClockBlocks, the time-tracking app that works like a Chess Clock and helps you understand how you spend your work day.
