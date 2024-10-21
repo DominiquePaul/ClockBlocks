@@ -6,6 +6,7 @@ import { TimeBox, SessionEvent, Session } from './types';
 
 let cachedDevMode: boolean | null = null;
 let dbInstance: Database | null = null;
+let currentTransaction: Database | null = null;
 
 const TABLES = {
   TIME_BOXES: 'timeBoxes',
@@ -147,19 +148,27 @@ async function getActualDbPath(): Promise<string> {
 
 // TRANSACTIONS
 export async function startTransaction(): Promise<Database> {
+  if (currentTransaction) {
+    console.warn('A transaction is already in progress');
+    return currentTransaction;
+  }
+
   const db = await getDatabase();
   if (!db) throw new Error('Database not available');
   
   await db.execute('BEGIN TRANSACTION');
+  currentTransaction = db;
   return db;
 }
 
 export async function commitTransaction(db: Database): Promise<void> {
   await db.execute('COMMIT');
+  currentTransaction = null;
 }
 
 export async function rollbackTransaction(db: Database): Promise<void> {
   await db.execute('ROLLBACK');
+  currentTransaction = null;
 }
 
 
@@ -261,7 +270,7 @@ export async function getSessionEvents(): Promise<SessionEvent[]> {
 
 
 export async function upsertSessionEvent(event: SessionEvent, transaction?: Database): Promise<void> {
-  const db = transaction || await getDatabase();
+  const db = transaction || currentTransaction || await getDatabase();
   if (!db) throw new Error('Database not available');
 
   try {
@@ -289,7 +298,7 @@ export async function upsertSessionEvent(event: SessionEvent, transaction?: Data
 
 
 export async function deleteSessionEvent(id: string, transaction?: Database): Promise<void> {
-  const db = transaction || await getDatabase();
+  const db = transaction || currentTransaction || await getDatabase();
   if (!db) throw new Error('Database not available');
 
   try {
@@ -422,6 +431,7 @@ export async function getMetadata(name: string): Promise<string | null> {
     throw error;
   }
 }
+
 
 
 

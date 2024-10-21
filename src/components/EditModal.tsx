@@ -402,6 +402,19 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
             // Commit the transaction
             await commitTransaction(transaction);
 
+            // After successful transaction, fetch updated events
+            const updatedEvents = await getSessionEvents();
+
+            // Update the selected session events being shown and reset the dropdown, from time, and to time
+            const filteredEvents = updatedEvents
+                .filter(event => event.sessionId === sessionId)
+                .sort((a, b) => new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime())
+                .map(event => ({ ...event, timeBoxName: timeBoxes.find(box => box.id === event.timeBoxId)?.name || 'Unknown' }));
+            
+            setSessionEvents(updatedEvents);
+            setSelectedSessionEvents(filteredEvents);
+            setSelectedTimeBoxId('');
+
         } catch (error) {
             console.error("Error during save operation:", error);
             // If there's an error, roll back the transaction
@@ -409,23 +422,7 @@ const EditModal: React.FC<EditModalProps> = ({ sessionId, sessionStart, sessionN
                 await rollbackTransaction(transaction);
             }
             // Optionally, you can add some user feedback here
-        } finally {
-            // No need to release the connection, as it's managed by the pool
-            // Just ensure the transaction is ended (either committed or rolled back)
         }
-
-         // After successful transaction, fetch updated events
-         const updatedEvents = await getSessionEvents();
-
-         // Update the selected session events being shown and reset the dropdown, from time, and to time
-         const filteredEvents = updatedEvents
-             .filter(event => event.sessionId === sessionId)
-             .sort((a, b) => new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime())
-             .map(event => ({ ...event, timeBoxName: timeBoxes.find(box => box.id === event.timeBoxId)?.name || 'Unknown' }));
-         
-         setSessionEvents(updatedEvents);
-         setSelectedSessionEvents(filteredEvents);
-         setSelectedTimeBoxId('');
     };
 
     return (

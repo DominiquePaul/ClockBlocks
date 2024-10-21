@@ -1,4 +1,5 @@
 # Added by developer
+scripts
 .env
 .env.production
 src-tauri/resources/google_client_secret.json

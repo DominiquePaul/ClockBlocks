@@ -19,19 +19,19 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
     const getStartOfWeek = (date: Date) => {
       const d = new Date(date);
       const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to make Monday the start of the week
       const startOfWeek = new Date(d.setDate(diff));
-      startOfWeek.setHours(0, 0, 0, 0); // Set the time to 00:00
+      startOfWeek.setHours(0, 0, 0, 0);
       return startOfWeek;
-  };
+    };
 
-  const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const dayAbbreviations = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
     // Move the prepareChartData function definition before the useMemo hook
     const prepareChartData = useCallback((events: SessionEvent[]) => {
+        let chartData: any[] = [];
         if (chartType === 'session') {
             const sessions = Array.from(new Set(events.map(event => event.sessionId)));
-            let chartData: any[] = [];
             sessions.forEach((session) => {
                 const sessionData = events
                     .filter(event => event.sessionId === session)
@@ -54,20 +54,24 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
             });
             return chartData;
         } else {
-            let chartData: any[] = [];
             let startDate: Date, endDate: Date;
 
             if (groupBy === 'Week') {
                 startDate = getStartOfWeek(currentPeriod);
                 endDate = new Date(startDate);
-                endDate.setDate(endDate.getDate() + 6);
+                endDate.setDate(endDate.getDate() + 7 );
                 
                 // Initialize data for all days of the week
-                chartData = weekDays.map((day, index) => ({
-                    name: day,
-                    fullDate: new Date(startDate.getTime() + index * 24 * 60 * 60 * 1000).toLocaleDateString("en-GB"),
-                    ...Object.fromEntries(timeBoxes.map(box => [box.name, 0]))
-                }));
+                chartData = dayAbbreviations.map((day, index) => {
+                    const date = new Date(startDate);
+                    date.setDate(date.getDate() + index);
+                    return {
+                        name: day,
+                        fullDate: date.toISOString(), // Store as ISO string
+                        ...Object.fromEntries(timeBoxes.map(box => [box.name, 0]))
+                    };
+                });
+                console.log("Chart data: ", chartData);
             } else if (groupBy === 'Month') {
                 startDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth(), 1);
                 endDate = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth() + 1, 0);
@@ -230,12 +234,12 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
     const formatXAxisTick = (tick: string, index: number) => {
         if (chartType === "date") {
             if (groupBy === 'Week') {
-                return tick; // Already formatted as M, T, W, T, F, S, S
+                return dayAbbreviations[index];
             } else if (groupBy === 'Month') {
                 const day = parseInt(tick);
                 return day === 1 || day % 5 === 0 ? day.toString() : ''; // Show 1, 5, 10, 15, 20, 25, 30
             } else {
-                return tick;
+                return tick; // Return the tick for 'All' view, but it will be invisible
             }
         } else if (chartType === 'session') {
             if (index === 0 || index === chartData.length - 1) {
@@ -279,6 +283,34 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
 
     const yAxisTicks = getYAxisTicks(chartData);
 
+    const parseDate = (dateString: string | undefined): Date => {
+        if (!dateString) return new Date('Invalid Date');
+
+        // First, try parsing as ISO string
+        let date = new Date(dateString);
+        if (!isNaN(date.getTime())) return date;
+
+        // If that fails, try parsing as "DD/MM/YYYY" format
+        const parts = dateString.split('/');
+        if (parts.length === 3) {
+            // Explicitly parse as DD/MM/YYYY
+            return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        }
+
+        // If all else fails, return an invalid date
+        return new Date('Invalid Date');
+    };
+
+    const formatTooltipDate = (dateString: string | undefined) => {
+        if (!dateString) return 'Invalid date';
+        const date = parseDate(dateString);
+        if (isNaN(date.getTime())) return 'Invalid date';
+        // For month view, we'll return the date in a short format
+        if (groupBy === 'Month') {
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        }
+        return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+    };
 
     const handleBarClick = (data: any, _: number) => {
         // console.log(data);
@@ -301,7 +333,15 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
                 color: getTimeBoxColor(key), // Changed from colour to color
             }))
             .sort((a, b) => b.time - a.time); 
-        setSelectedBarData({barData, sessionId: data.sessionId, sessionStart: data.startDatetime, sessionNumber: data.name, title: data.sessionId ? `Session ${data.name}` : formatTooltipDate(data.fullDate)});
+        setSelectedBarData({
+            barData, 
+            sessionId: data.sessionId, 
+            sessionStart: data.startDatetime, 
+            sessionNumber: data.name, 
+            title: data.sessionId 
+                ? `Session ${data.name}` 
+                : formatTooltipDate(data.fullDate)
+        });
     };
 
     const handleChartClick = (data: any) => {
@@ -311,18 +351,44 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
         }
     };
 
-    const formatTooltipDate = (dateString: string | undefined) => {
-        if (!dateString) return 'Invalid date';
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return 'Invalid date';
-        return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
-    };
-
     const bucketTitles = Array.from(new Set(timeBoxes.map(box => box.name)));
 
     const getTimeBoxColor = (timeBoxName: string) => {
         const timeBox = timeBoxes.find(box => box.name === timeBoxName);
         return timeBox?.colour || `hsl(${Math.random() * 360}, 70%, 50%)`;
+    };
+
+    const getDateRangeDisplay = () => {
+        if (groupBy === 'Week') {
+            const start = getStartOfWeek(currentPeriod);
+            const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+            return formatDateRange(start, end);
+        } else if (groupBy === 'Month') {
+            const start = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth(), 1);
+            const end = new Date(currentPeriod.getFullYear(), currentPeriod.getMonth() + 1, 0);
+            return formatDateRange(start, end);
+        } else {
+            // For 'All' time view
+            const start = new Date(Math.min(...filteredEvents.map(e => new Date(e.startDatetime).getTime())));
+            const end = new Date(Math.max(...filteredEvents.map(e => new Date(e.startDatetime).getTime())));
+            return formatDateRange(start, end);
+        }
+    };
+
+    const formatDateRange = (start: Date, end: Date) => {
+        const startString = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        const endString = end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        
+        if (start.getFullYear() === end.getFullYear()) {
+            if (start.getMonth() === end.getMonth()) {
+                if (start.getDate() === end.getDate()) {
+                    return startString; // Same day
+                }
+                return `${start.getDate()} - ${endString}`; // Same month
+            }
+            return `${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${endString}`; // Same year
+        }
+        return `${startString} - ${endString}`; // Different years
     };
 
     return (
@@ -332,20 +398,7 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
                     <div className="p-8 h-full rounded-[14px] bg-black backdrop-blur-[40px] flex flex-col">
                         <div className="flex flex-col mb-4">
                             <p className="text-[rgba(217,217,217,0.30)] leading-trim text-edge-cap font-inter text-sm font-normal leading-normal">
-                                {(() => {
-                                    const start = getStartOfWeek(currentPeriod);
-                                    const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
-                                    const startString = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-                                    const endString = end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-                                    
-                                    if (start.getFullYear() === end.getFullYear()) {
-                                        if (start.getMonth() === end.getMonth()) {
-                                            return `${start.toLocaleDateString('en-GB', { day: 'numeric' })} - ${endString}`;
-                                        }
-                                        return `${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${endString}`;
-                                    }
-                                    return `${startString} - ${endString}`;
-                                })()}
+                                {getDateRangeDisplay()}
                             </p>
                             <p className="text-[#D9D9D9] leading-trim text-edge-cap font-inter text-[28px] font-normal leading-normal">
                                 Total time: {formatSeconds(filteredEvents.reduce((total, event) => total + event.seconds, 0))}
@@ -360,7 +413,10 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
                                 >
                                     <XAxis 
                                         dataKey="name"
-                                        tick={{ fill: '#5E5E5E', fontSize: 10 }}
+                                        tick={{ 
+                                            fill: chartType === 'date' && groupBy === 'All' ? 'transparent' : '#5E5E5E', 
+                                            fontSize: 10 
+                                        }}
                                         tickFormatter={(value, index) => formatXAxisTick(value, index)} // Removed additionalArg
                                         interval={0}
                                         axisLine={false}
@@ -388,7 +444,7 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
                                                     if (groupBy === 'Week') {
                                                         // For week view, construct the date from the label (day of week)
                                                         const weekStart = getStartOfWeek(currentPeriod);
-                                                        const dayIndex = weekDays.indexOf(label);
+                                                        const dayIndex = dayAbbreviations.indexOf(label);
                                                         if (dayIndex !== -1) {
                                                             const date = new Date(weekStart);
                                                             date.setDate(date.getDate() + dayIndex);
@@ -398,15 +454,19 @@ function ChartPage({ timeBoxes }: { timeBoxes: TimeBox[] }) {
                                                             displayDate = 'Invalid date';
                                                             sessionDate = 'Invalid date';
                                                         }
-                                                    } else {
-                                                        // For month and all views
+                                                    } else if (groupBy === 'Month') {
+                                                        // For month view
                                                         displayDate = formatTooltipDate(sessionData.fullDate);
-                                                        sessionDate = new Date(sessionData.fullDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                                                        sessionDate = parseDate(sessionData.fullDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                                                    } else {
+                                                        // For all view
+                                                        displayDate = formatTooltipDate(sessionData.fullDate);
+                                                        sessionDate = parseDate(sessionData.fullDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                                                     }
                                                 } else {
                                                     // For session view
                                                     displayDate = `Session ${sessionData.name}` || label;
-                                                    sessionDate = new Date(sessionData.startDatetime).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                                                    sessionDate = parseDate(sessionData.startDatetime).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                                                 }
 
                                                 return (
